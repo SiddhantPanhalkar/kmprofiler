@@ -1,0 +1,42 @@
+name: Bug report
+description: Report a problem with kmprofiler
+labels: [ "bug" ]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include the relevant `kmprofiler { ... }` block, the Gradle command run, and (if possible) a snippet of the generated header.
+      placeholder: |
+        ./gradlew analyzeKmprofiler
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What actually happened, including any report output or stack trace.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Environment
+      description: Plugin version, Gradle version, Kotlin version, OS
+      placeholder: kmprofiler 0.1.0, Gradle 9.1.0, Kotlin 2.4.10, macOS 15
+    validations:
+      required: true

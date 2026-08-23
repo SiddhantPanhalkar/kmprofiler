@@ -2,6 +2,7 @@ package io.github.siddhantpanhalkar.kmprofiler.scanner
 
 import io.github.siddhantpanhalkar.kmprofiler.model.DeclarationKind
 import io.github.siddhantpanhalkar.kmprofiler.model.ExportedDeclaration
+import io.github.siddhantpanhalkar.kmprofiler.model.MatchKind
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -9,83 +10,94 @@ import java.io.File
 
 class SwiftUsageScannerTest {
 
-    private val scanner = SwiftUsageScanner()
-
-    private fun decl(name: String, vararg selectors: String) =
-        ExportedDeclaration(name, DeclarationKind.CLASS, selectors.toList(), selectors.size)
-
     @TempDir
     lateinit var tempDir: File
 
-    private fun writeSwift(dir: File, relativePath: String, content: String): File {
-        val file = dir.resolve(relativePath)
+    private val scanner = SwiftUsageScanner()
+
+    private fun declaration(name: String, vararg selectors: String) =
+        ExportedDeclaration(name, DeclarationKind.CLASS, selectors.toList(), selectors.size)
+
+    private fun writeSwift(relativePath: String, content: String): File {
+        val file = tempDir.resolve(relativePath)
         file.parentFile.mkdirs()
-        file.writeText(content)
+        file.writeText(content.trimIndent())
         return file
     }
 
     @Test
-    fun `class name appearing in swift file is not a candidate`() {
-        writeSwift(tempDir, "ContentView.swift", "let engine = AuthEngine()")
-
-        val result = scanner.findUnreferenced(listOf(decl("AuthEngine")), setOf(tempDir))
-
-        assertThat(result).isEmpty()
-    }
-
-    @Test
-    fun `selector used as swift method call is not a candidate`() {
-        writeSwift(tempDir, "Driver.swift", "driver.doWith(a: 1, b: 2)")
-
-        val result = scanner.findUnreferenced(listOf(decl("Driver", "doWith:b:")), setOf(tempDir))
-
-        assertThat(result).isEmpty()
-    }
-
-    @Test
-    fun `declaration not mentioned is a candidate`() {
-        writeSwift(tempDir, "ContentView.swift", "let engine = AuthEngine()")
-
-        val result = scanner.findUnreferenced(listOf(decl("UnusedType")), setOf(tempDir))
-
-        assertThat(result.map { it.name }).containsExactly("UnusedType")
-    }
-
-    @Test
-    fun `empty swift dirs mark all declarations as candidates`() {
-        val result = scanner.findUnreferenced(
-            listOf(decl("A"), decl("B")),
-            emptySet(),
-        )
-
-        assertThat(result.map { it.name }).containsExactly("A", "B")
-    }
-
-    @Test
-    fun `swift file in nested subdirectory is found`() {
+    fun `records file and line evidence for a standalone type token`() {
         writeSwift(
-            tempDir,
-            "Views/Detail/DetailView.swift",
-            "class DetailView { let w = Widget() }"
+            "ContentView.swift",
+            """
+            import Shared
+            let engine: AuthEngine = AuthEngine()
+            """,
         )
 
-        val result = scanner.findUnreferenced(listOf(decl("Widget")), setOf(tempDir))
+        val result =
+            scanner.scan(listOf(declaration("AuthEngine")), setOf(tempDir)).results.single()
 
-        assertThat(result).isEmpty()
+        assertThat(result.status).isEqualTo(MatchKind.TYPE_REFERENCE)
+        assertThat(result.evidence).allSatisfy {
+            assertThat(it.filePath).endsWith("ContentView.swift")
+            assertThat(it.lineNumber).isEqualTo(2)
+            assertThat(it.matchedText).isEqualTo("AuthEngine")
+        }
     }
 
     @Test
-    fun `multiple source dirs are searched as a union`() {
-        val dirA = tempDir.resolve("a").apply { mkdirs() }
-        val dirB = tempDir.resolve("b").apply { mkdirs() }
-        writeSwift(dirA, "One.swift", "let x = TypeA()")
-        writeSwift(dirB, "Two.swift", "let y = TypeB()")
+    fun `does not match a declaration name embedded in another identifier`() {
+        writeSwift("ContentView.swift", "let value = AuthEngineFactory()")
 
-        val result = scanner.findUnreferenced(
-            listOf(decl("TypeA"), decl("TypeB")),
-            setOf(dirA, dirB),
+        val result =
+            scanner.scan(listOf(declaration("AuthEngine")), setOf(tempDir)).results.single()
+
+        assertThat(result.status).isEqualTo(MatchKind.NO_REFERENCE)
+    }
+
+    @Test
+    fun `does not treat a globally matched member selector as a type reference`() {
+        writeSwift("Driver.swift", "driver.start()")
+
+        val result = scanner.scan(
+            listOf(declaration("ZoomController", "start")),
+            setOf(tempDir),
+        ).results.single()
+
+        assertThat(result.status).isEqualTo(MatchKind.NO_REFERENCE)
+        assertThat(result.isReferenced).isFalse()
+    }
+
+    @Test
+    fun `does not match comments or normal and multiline string literals`() {
+        writeSwift(
+            "ContentView.swift",
+            "// AuthEngine()\n" +
+                    "let message = \"AuthEngine\"\n" +
+                    "let documentation = \"\"\"\n" +
+                    "AuthEngine\n" +
+                    "\"\"\"\n" +
+                    "/* AuthEngine */",
         )
 
-        assertThat(result).isEmpty()
+        val result =
+            scanner.scan(listOf(declaration("AuthEngine")), setOf(tempDir)).results.single()
+
+        assertThat(result.status).isEqualTo(MatchKind.NO_REFERENCE)
+    }
+
+    @Test
+    fun `collects swift files from source files and directories deterministically`() {
+        val directFile = writeSwift("Top.swift", "let a = TypeA()")
+        writeSwift("Views/Detail.swift", "let b = TypeB()")
+
+        val output = scanner.scan(
+            listOf(declaration("TypeA"), declaration("TypeB")),
+            linkedSetOf(tempDir.resolve("Views"), directFile),
+        )
+
+        assertThat(output.scannedFileCount).isEqualTo(2)
+        assertThat(output.unreferenced).isEmpty()
     }
 }

@@ -12,11 +12,9 @@ import io.github.siddhantpanhalkar.kmprofiler.model.ExportedDeclaration
  *   3. Underscore module-mangling pattern → LIKELY_EXTERNAL
  *   4. Everything else                    → APP_CODE
  *
- * The underscore pattern [A-Z][a-zA-Z0-9]+_[a-z] is derived directly from
- * Kotlin/Native's ObjC name mangling for cross-module types. It converts
- * Gradle module path separators (`-`) to underscores and concatenates with
- * the type name. This is a structural property of the compiler output, not
- * a hardcoded list of library names.
+ * The underscore pattern is a naming heuristic. It can help group declarations
+ * for ownership review, but it does not prove that a declaration comes from a
+ * dependency or from a particular Kotlin module.
  */
 class DeclarationClassifier(
     /**
@@ -33,17 +31,17 @@ class DeclarationClassifier(
     fun classify(decl: ExportedDeclaration): DeclarationCategory {
         val name = decl.name
 
-        // 1. User-declared external prefixes (checked first — user intent wins)
+        // 1. User-declared ownership-review prefixes. User configuration wins.
         if (userExternalPrefixes.any { prefix -> name.startsWith(prefix) }) {
             return DeclarationCategory.USER_FLAGGED_EXTERNAL
         }
 
-        // 2. Kotlin file facades — reliable structural pattern from Kotlin/Native
+        // 2. Conventional Kotlin file-facade suffix.
         if (name.length > 2 && name.endsWith("Kt")) {
             return DeclarationCategory.KOTLIN_FILE_FACADE
         }
 
-        // 3. Cross-module name mangling — underscore between module path segments
+        // 3. Possible cross-module name mangling with underscores between segments.
         if (externalModulePattern.containsMatchIn(name)) {
             return DeclarationCategory.LIKELY_EXTERNAL
         }

@@ -1,6 +1,7 @@
 package io.github.siddhantpanhalkar.kmprofiler
 
 import io.github.siddhantpanhalkar.kmprofiler.task.AnalyzeKmprofilerTask
+import io.github.siddhantpanhalkar.kmprofiler.task.GenerateLinkMapTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
@@ -37,5 +38,19 @@ class KmprofilerPlugin : Plugin<Project> {
             task.externalPrefixes.set(extension.externalPrefixes)
             task.allowEmptyConsumerSources.set(extension.allowEmptyConsumerSources)
         }
+
+        project.tasks.register("generateKmprofilerLinkMap", GenerateLinkMapTask::class.java) { task ->
+            task.group = "kmprofiler"
+            task.description =
+                "Builds the iOS application with LD_GENERATE_MAP_FILE=YES and exports the link map."
+
+            task.iosWorkspace.set(extension.iosWorkspace)
+            task.iosProject.set(extension.iosProject)
+            task.iosScheme.set(extension.iosScheme)
+            task.linkMapOutput.convention(
+                project.layout.buildDirectory.file("reports/kmprofiler-linkmap.txt")
+            )
+        }
     }
 }
+

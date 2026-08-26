@@ -100,4 +100,41 @@ class AnalyzeKmprofilerTaskFunctionalTest {
 
         assertThat(second.task(":analyzeKmprofiler")?.outcome).isEqualTo(TaskOutcome.UP_TO_DATE)
     }
+
+    @Test
+    fun `analyzeKmprofiler fails when configured swift sources are empty by default`() {
+        swiftDir.listFiles()?.forEach { it.delete() }
+
+        val result = GradleRunner.create()
+            .withProjectDir(testProjectDir)
+            .withPluginClasspath()
+            .withArguments("analyzeKmprofiler")
+            .buildAndFail()
+
+        assertThat(result.output).contains("No Swift source files were found")
+        assertThat(result.output).contains("allowEmptyConsumerSources = true")
+    }
+
+    @Test
+    fun `analyzeKmprofiler allows an explicit header-only audit`() {
+        swiftDir.listFiles()?.forEach { it.delete() }
+        buildFile.appendText(
+            """
+
+            kmprofiler {
+                allowEmptyConsumerSources.set(true)
+            }
+            """.trimIndent(),
+        )
+
+        val result = GradleRunner.create()
+            .withProjectDir(testProjectDir)
+            .withPluginClasspath()
+            .withArguments("analyzeKmprofiler")
+            .build()
+
+        assertThat(result.task(":analyzeKmprofiler")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        assertThat(File(testProjectDir, "build/reports/kmprofiler-report.md").readText())
+            .contains("Swift files scanned: 0")
+    }
 }

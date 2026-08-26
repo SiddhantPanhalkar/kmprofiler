@@ -26,6 +26,13 @@ abstract class KmprofilerExtension @Inject constructor(objects: ObjectFactory) {
     /** Number of distinct exported framework binaries in this project. Defaults to 1. */
     abstract val exportedFrameworkCount: Property<Int>
 
-    /** Name prefixes to treat as external library code in the report. */
+    /** Name prefixes to group for ownership review. This does not establish module ownership. */
     abstract val externalPrefixes: ListProperty<String>
+
+    /**
+     * Allow a header-only audit when no Swift consumer source files are found.
+     * Defaults to false because a missing source path would otherwise mark every
+     * exported declaration as a review candidate.
+     */
+    val allowEmptyConsumerSources: Property<Boolean> = objects.property(Boolean::class.java)
 }

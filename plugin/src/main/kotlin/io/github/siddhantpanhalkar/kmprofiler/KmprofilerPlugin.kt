@@ -16,6 +16,7 @@ class KmprofilerPlugin : Plugin<Project> {
         extension.exportedFrameworkCount.convention(1)
         extension.externalPrefixes.convention(emptyList())
         extension.swiftSourceDirs.setFrom(project.file("iosApp"))
+        extension.allowEmptyConsumerSources.convention(false)
 
         val transitiveExportValue =
             project.findProperty("kotlin.native.transitiveExport")?.toString()?.toBoolean()
@@ -34,6 +35,7 @@ class KmprofilerPlugin : Plugin<Project> {
             task.staticLinkage.set(extension.isStatic)
             task.exportedFrameworkCount.set(extension.exportedFrameworkCount)
             task.externalPrefixes.set(extension.externalPrefixes)
+            task.allowEmptyConsumerSources.set(extension.allowEmptyConsumerSources)
         }
     }
 }

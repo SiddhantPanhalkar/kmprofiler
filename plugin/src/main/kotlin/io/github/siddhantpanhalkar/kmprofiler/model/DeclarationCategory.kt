@@ -5,20 +5,20 @@ package io.github.siddhantpanhalkar.kmprofiler.model
  *
  * The classification is intentionally conservative:
  *   - [LIKELY_EXTERNAL] is a heuristic, not a guarantee.
- *   - [KOTLIN_FILE_FACADE] is reliable (Kotlin/Native always emits `*Kt` suffix).
- *   - [APP_CODE] is the default — anything that doesn't match the other patterns.
+ *   - [KOTLIN_FILE_FACADE] means the exported name ends in the conventional `Kt` suffix.
+ *   - [APP_CODE] is the default when no other naming pattern matches.
  *   - [USER_FLAGGED_EXTERNAL] means the user explicitly told the plugin this prefix
  *     is from an external library via [io.github.siddhantpanhalkar.kmprofiler.KmprofilerExtension.externalPrefixes].
  */
 enum class DeclarationCategory {
-    /** Your Kotlin code. No underscore module pattern, not a file facade. */
+    /** No external-module naming pattern, configured prefix, or file-facade suffix matched. */
     APP_CODE,
 
     /**
-     * Top-level Kotlin file facade. Kotlin/Native emits a `*Kt` ObjC class for
-     * every Kotlin source file that contains top-level functions.
-     * Example: `ColorKt` wraps all top-level functions in `Color.kt`.
-     * These can be hidden with `@file:HiddenFromObjC` at the file level.
+     * Exported name with the conventional Kotlin file-facade `Kt` suffix.
+     * Example: `ColorKt` may wrap top-level declarations from `Color.kt`.
+     * Review the eligible declarations behind a facade individually. `HiddenFromObjC`
+     * is not valid as a file annotation.
      */
     KOTLIN_FILE_FACADE,
 
@@ -31,9 +31,9 @@ enum class DeclarationCategory {
      *   `koin-core`        → `Koin_core` prefix
      *   `kotlinx-coroutines-core` → `Kotlinx_coroutines_core` prefix
      *
-     * This pattern is reliable but not exhaustive — some libraries (e.g. Skia/Skiko,
-     * some SDK models) use simple prefixes without underscores. Use [USER_FLAGGED_EXTERNAL]
-     * for those via the `externalPrefixes` extension property.
+     * This pattern is only a classification hint. App code can have the same shape, and
+     * some external libraries use simple prefixes. Use [USER_FLAGGED_EXTERNAL] for
+     * known prefixes via the `externalPrefixes` extension property.
      */
     LIKELY_EXTERNAL,
 

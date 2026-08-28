@@ -2,131 +2,128 @@ package io.github.siddhantpanhalkar.kmprofiler.report
 
 import io.github.siddhantpanhalkar.kmprofiler.model.ConfigLintResult
 import io.github.siddhantpanhalkar.kmprofiler.model.DeclarationKind
+import io.github.siddhantpanhalkar.kmprofiler.model.DeclarationScanResult
 import io.github.siddhantpanhalkar.kmprofiler.model.ScanResult
+import java.time.Instant
 
+/** Renders the v1 export audit report without making reachability or size claims. */
 object MarkdownReportRenderer {
 
     fun render(result: ScanResult): String = buildString {
-        appendLine("### 📊 KMP iOS Export Profile — v0.1")
+        appendLine("### kmprofiler iOS Export Audit")
         appendLine()
-        appendLine("**Export surface:** ${result.totalExported} Kotlin declarations exported to Objective-C.")
+        appendLine("**Export surface:** ${result.totalExported} declarations found in the generated Objective-C header.")
 
-        val totalUnreferenced = result.reviewCandidates.size +
-                result.kotlinFileFacadeCandidates.size +
-                result.likelyExternalCandidates.size
-
-        if (totalUnreferenced == 0) {
-            appendLine("**All exported declarations have at least one direct call site in the scanned Swift sources.** ✅")
+        val candidateCount = result.reviewCandidates.size +
+                result.kotlinFileFacadeCandidates.size + result.likelyExternalCandidates.size
+        if (candidateCount == 0) {
+            appendLine("**No review candidates found in the configured Swift source scan.**")
         } else {
-            appendLine("**No direct Swift call site found for $totalUnreferenced of them.**")
+            appendLine("**No standalone declaration-name token found for $candidateCount declarations in the configured Swift sources.**")
         }
 
         appendLine()
-        appendLine("> ⚠️ App-size impact not yet measured. Enable `Write Link Map File` in Xcode")
-        appendLine("> and re-run with `--link-map` for linked byte attribution. Note that raw")
-        appendLine("> `.xcframework` size is *not* your app-size delta — it includes simulator")
-        appendLine("> slices and all architectures.")
+        appendLine("> Review candidates are not unused-code findings and are not safe-to-hide recommendations.")
+        appendLine("> This scan only looks for standalone declaration names in configured Swift source files.")
+        appendLine("> It excludes comments and string literals, and does not treat a member name such as `start()`")
+        appendLine("> as a reference because the receiver type cannot be established from a text search.")
+        appendLine("> It does not analyze Kotlin call graphs, public API relationships, Objective-C source, generated")
+        appendLine("> code, tests outside the configured roots, or downstream consumers.")
 
-        // ── Section 1: Your code ──────────────────────────────────────────────────
+        appendLine()
+        appendLine("#### Provenance")
+        if (result.headerPath.isNotBlank()) {
+            appendLine("- Header: `${result.headerPath}`")
+        }
+        if (result.headerTimestamp > 0) {
+            appendLine("- Header modified: ${Instant.ofEpochMilli(result.headerTimestamp)}")
+        }
+        appendLine("- Swift files scanned: ${result.scannedFileCount}")
+        appendLine("- Swift lines scanned: ${result.scannedLineCount}")
+        appendLine("- Evidence: standalone declaration-name tokens in executable Swift source only")
+
         if (result.reviewCandidates.isNotEmpty()) {
             appendLine()
-            appendLine("#### Your code — review candidates (${result.reviewCandidates.size})")
+            appendLine("#### App-code review candidates (${result.reviewCandidates.size})")
             appendLine()
-            appendLine("No direct call site found in scanned Swift sources.")
-            appendLine()
-            appendLine("| Declaration | Kind | Members |")
-            appendLine("|---|---|---|")
-            result.reviewCandidates.sortedByDescending { it.memberCount }.forEach { decl ->
-                val membersDisplay =
-                    if (decl.memberCount == 0) "0 (empty)" else "${decl.memberCount}"
-                appendLine("| `${decl.name}` | ${decl.kind.label()} | $membersDisplay |")
-            }
-            appendLine()
-            appendLine("Hiding these with `internal` or `@HiddenFromObjC` removes their ObjC adapters.")
-            appendLine("**Verify first** — declarations used via DI, protocol conformance, or external")
-            appendLine("SDK consumers will not appear as call sites here.")
-            appendLine()
-            appendLine("> 💡 Seeing names you didn't write (e.g. SDK types like `SkikoCanvas` or `ModelsCustomerInfo`)?")
-            appendLine("> Those are library internals the auto-classifier couldn't identify automatically.")
-            appendLine("> Add their name prefix to `externalPrefixes` in your `kmprofiler {}` block")
-            appendLine("> and they will move to the 'Library internals' section on next run:")
-            appendLine("> ```kotlin")
-            appendLine("> kmprofiler {")
-            appendLine(">     externalPrefixes.addAll(\"Skiko\", \"Models\")")
-            appendLine("> }")
-            appendLine("> ```")
+            appendLine("These names did not occur as standalone tokens in the configured Swift sources.")
+            renderDeclarationTable(this, result.reviewCandidates, includeKind = true)
+            renderManualReviewGuidance(this)
         }
 
-        // ── Section 2: Kotlin file facades ───────────────────────────────────────
         if (result.kotlinFileFacadeCandidates.isNotEmpty()) {
             appendLine()
-            appendLine("#### Kotlin file facades — review candidates (${result.kotlinFileFacadeCandidates.size})")
+            appendLine("#### Kotlin file facade review candidates (${result.kotlinFileFacadeCandidates.size})")
             appendLine()
-            appendLine("These `*Kt` classes are generated by Kotlin/Native for source files containing")
-            appendLine("top-level functions (e.g. `ColorKt` wraps `Color.kt`). If iOS never uses these")
-            appendLine("functions directly, add `@file:HiddenFromObjC` at the top of the Kotlin source file.")
-            appendLine()
-            appendLine("| Declaration | Members |")
-            appendLine("|---|---|")
-            result.kotlinFileFacadeCandidates.sortedByDescending { it.memberCount }
-                .forEach { decl ->
-                    val membersDisplay =
-                        if (decl.memberCount == 0) "0 (empty)" else "${decl.memberCount}"
-                    appendLine("| `${decl.name}` | $membersDisplay |")
-                }
+            appendLine("`*Kt` entries are Kotlin/Native facades for top-level declarations. Inspect the individual")
+            appendLine("Kotlin functions or properties behind a facade. `@HiddenFromObjC` is valid on eligible")
+            appendLine("classes, functions, and properties. It is not a file annotation.")
+            renderDeclarationTable(this, result.kotlinFileFacadeCandidates, includeKind = false)
         }
 
-        // ── Section 3: Likely library internals ──────────────────────────────────
         if (result.likelyExternalCandidates.isNotEmpty()) {
             appendLine()
-            appendLine("#### Likely library internals — ${result.likelyExternalCandidates.size} declarations")
+            appendLine("#### Ownership needs review (${result.likelyExternalCandidates.size})")
             appendLine()
-            appendLine("These declarations match the Kotlin/Native cross-module ObjC name mangling pattern")
-            appendLine("(`ModuleName_submoduleTypeName`) or a user-configured external prefix.")
-            appendLine("They originate from transitive dependencies, not your Kotlin code.")
-            appendLine()
-            appendLine("**You cannot hide these with `internal` or `@HiddenFromObjC`.**")
-            appendLine("To remove them from your framework header:")
-            appendLine("- Ensure `transitiveExport = false` (already correct if shown in Config below)")
-            appendLine("- Remove any explicit `export(deps.someLibrary)` from your `binaries.framework {}` block")
-            appendLine()
-            appendLine("| Declaration | Members |")
-            appendLine("|---|---|")
-            result.likelyExternalCandidates.sortedByDescending { it.memberCount }.forEach { decl ->
-                val membersDisplay =
-                    if (decl.memberCount == 0) "0 (empty)" else "${decl.memberCount}"
-                appendLine("| `${decl.name}` | $membersDisplay |")
-            }
+            appendLine("These entries match a configured prefix or a Kotlin/Native naming pattern. That is a")
+            appendLine("classification hint, not evidence that they belong to a dependency. Confirm ownership")
+            appendLine("and the framework export configuration before changing code or dependencies.")
+            renderDeclarationTable(this, result.likelyExternalCandidates, includeKind = true)
         }
 
         appendLine()
-        appendLine("#### Config")
+        appendLine("#### Config values supplied to kmprofiler")
         appendConfigLint(result.configLint)
     }
 
-    private fun StringBuilder.appendConfigLint(lint: ConfigLintResult) {
-        when (lint.transitiveExport) {
-            true -> appendLine("- ❌ `transitiveExport = true` — not recommended; pulls all transitive dependencies of exported deps into the framework.")
-            false -> appendLine("- ✅ `transitiveExport = false` — correct default.")
-            null -> appendLine("- ℹ️ `transitiveExport` — not explicitly set (defaults to `false`).")
+    private fun renderDeclarationTable(
+        output: StringBuilder,
+        candidates: List<DeclarationScanResult>,
+        includeKind: Boolean,
+    ) {
+        output.appendLine()
+        if (includeKind) {
+            output.appendLine("| Declaration | Kind | Members | Scan result |")
+            output.appendLine("|---|---|---:|---|")
+        } else {
+            output.appendLine("| Declaration | Members | Scan result |")
+            output.appendLine("|---|---:|---|")
         }
-
-        when (lint.isStatic) {
-            true -> appendLine("- ℹ️ `isStatic = true` — app-linker dead-stripping applies; raw framework size will substantially overstate app delta.")
-            false -> appendLine("- ℹ️ `isStatic = false` — dynamic linkage; whole thinned framework is embedded. Valid for modules with C/ObjC++ dependencies.")
-            null -> appendLine("- ℹ️ `isStatic` — not explicitly set; check Xcode `Embed Frameworks` settings.")
+        candidates.sortedByDescending { it.memberCount }.forEach { candidate ->
+            val members =
+                if (candidate.memberCount == 0) "0 (empty)" else candidate.memberCount.toString()
+            if (includeKind) {
+                output.appendLine("| `${candidate.name}` | ${candidate.kind.label()} | $members | no type token found |")
+            } else {
+                output.appendLine("| `${candidate.name}` | $members | no type token found |")
+            }
         }
+    }
 
-        when {
-            lint.exportedFrameworkCount > 1 ->
-                appendLine("- ⚠️ ${lint.exportedFrameworkCount} exported frameworks detected. Each is compiled independently — shared external types (e.g. coroutines) will be duplicated across binaries.")
+    private fun renderManualReviewGuidance(output: StringBuilder) {
+        output.appendLine()
+        output.appendLine("Before changing a candidate:")
+        output.appendLine()
+        output.appendLine("1. Check whether it is intentionally public Kotlin API.")
+        output.appendLine("2. Check every public or protected declaration that accepts, returns, inherits, or exposes it.")
+        output.appendLine("3. Use `internal` only when the declaration can remain visible to all required Kotlin source sets.")
+        output.appendLine("4. Use `private` only when its required Kotlin scope permits it.")
+        output.appendLine("5. Consider declaration-level `@HiddenFromObjC` only when Kotlin visibility must remain public and the declaration is eligible.")
+        output.appendLine("6. Compile all affected Kotlin and iOS targets, then re-link and re-run the audit.")
+    }
 
-            lint.exportedFrameworkCount == 1 ->
-                appendLine("- ✅ Single exported framework; no cross-framework type duplication detected.")
-
-            else ->
-                appendLine("- ℹ️ No exported frameworks detected (check your `binaries.framework {}` block).")
+    private fun StringBuilder.appendConfigLint(config: ConfigLintResult) {
+        when (config.transitiveExport) {
+            true -> appendLine("- `transitiveExport = true` was supplied to kmprofiler. Review whether transitive dependencies should be exported.")
+            false -> appendLine("- `transitiveExport = false` was supplied to kmprofiler.")
+            null -> appendLine("- `transitiveExport` was not supplied to kmprofiler. Confirm the framework setting in the KMP build.")
         }
+        when (config.isStatic) {
+            true -> appendLine("- `isStatic = true` was supplied to kmprofiler. This report does not measure final app size.")
+            false -> appendLine("- `isStatic = false` was supplied to kmprofiler. This report does not measure final app size.")
+            null -> appendLine("- `isStatic` was not supplied to kmprofiler. Confirm the framework setting in the KMP build.")
+        }
+        appendLine("- Exported framework count supplied to kmprofiler: ${config.exportedFrameworkCount}")
     }
 
     private fun DeclarationKind.label() = when (this) {

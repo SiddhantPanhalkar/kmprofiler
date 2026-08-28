@@ -1,26 +1,19 @@
 package io.github.siddhantpanhalkar.kmprofiler.model
 
-/** Output of the full pipeline for one project. */
+/** Output of the v1 export audit for one framework header and Swift source set. */
 data class ScanResult(
     val totalExported: Int,
-    /**
-     * Declarations classified as APP_CODE with no Swift call site found.
-     * These are the primary actionable findings.
-     */
-    val reviewCandidates: List<ExportedDeclaration>,
-    /**
-     * Kotlin top-level file facades (*Kt classes) with no Swift call site.
-     * Can be hidden with @file:HiddenFromObjC at the file level.
-     */
-    val kotlinFileFacadeCandidates: List<ExportedDeclaration> = emptyList(),
-    /**
-     * Declarations likely from external Kotlin modules (underscore mangling
-     * pattern detected), with no Swift call site. Listed separately because
-     * developers cannot hide these with internal/HiddenFromObjC — they must
-     * remove the export() dependency or eliminate transitiveExport.
-     */
-    val likelyExternalCandidates: List<ExportedDeclaration> = emptyList(),
+    /** App-code declarations with no declaration-name token found in the scan. */
+    val reviewCandidates: List<DeclarationScanResult>,
+    /** Kotlin top-level file facades with no declaration-name token found in the scan. */
+    val kotlinFileFacadeCandidates: List<DeclarationScanResult> = emptyList(),
+    /** Declarations classified by a name heuristic or configured prefix, for review. */
+    val likelyExternalCandidates: List<DeclarationScanResult> = emptyList(),
     val configLint: ConfigLintResult,
+    val scannedFileCount: Int = 0,
+    val scannedLineCount: Int = 0,
+    val headerPath: String = "",
+    val headerTimestamp: Long = 0,
 )
 
 data class ConfigLintResult(

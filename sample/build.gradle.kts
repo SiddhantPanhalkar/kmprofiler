@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
-    id("io.github.siddhantpanhalkar.kmprofiler") version "0.1.0"
+    id("io.github.siddhantpanhalkar.kmprofiler") version "0.1.1"
 }
 
 kotlin {

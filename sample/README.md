@@ -1,20 +1,21 @@
-# kmprofiler Sample Project
+# kmprofiler sample project
 
-This is a minimal Kotlin Multiplatform project demonstrating how `kmprofiler` profiles the iOS
-Objective-C export surface.
+This small Kotlin Multiplatform project shows the V1 export-surface audit. The report contains facts
+from the generated header and review candidates based on direct textual matches in the sample Swift
+source. A candidate is not proof that a Kotlin declaration is unused.
 
-## What this sample demonstrates:
+The sample includes one declaration referenced by `iosApp/ContentView.swift`, a few app declarations
+with no matching Swift type token, and a Kotlin file facade. The referenced declaration is omitted
+from the candidate list; the other declarations are included for review.
 
-- **Active Code**: `UserRepository` (called from `iosApp/ContentView.swift` — filtered out)
-- **Unused App Code**: `InternalSyncEngine`, `DataMapper`, `SyncListener` (flagged in Section 1)
-- **Kotlin File Facades**: `DateUtilsKt` (flagged in Section 2)
+## Run
 
-## How to Run
+From the repository root:
 
 ```bash
-# 1. Publish plugin locally
 ./gradlew :plugin:publishToMavenLocal
-
-# 2. Run analysis on this sample
 ./gradlew :sample:analyzeKmprofiler
 ```
+
+The sample uses the plugin version configured in `sample/build.gradle.kts` and resolves it from
+Maven Local.

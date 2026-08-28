@@ -30,12 +30,7 @@ abstract class KmprofilerExtension @Inject constructor(objects: ObjectFactory) {
     /** Name prefixes to group for ownership review. This does not establish module ownership. */
     abstract val externalPrefixes: ListProperty<String>
 
-    /**
-     * Allow a header-only audit when no Swift consumer source files are found.
-     * Defaults to false because a missing source path would otherwise mark every
-     * exported declaration as a review candidate.
-     */
-    val allowEmptyConsumerSources: Property<Boolean> = objects.property(Boolean::class.java)
+    // ── Xcode build settings ─────────────────────────────────────────────
 
     /** Path to the Xcode workspace (.xcworkspace). Optional if iosProject is set. */
     val iosWorkspace: Property<File> = objects.property(File::class.java)
@@ -45,5 +40,39 @@ abstract class KmprofilerExtension @Inject constructor(objects: ObjectFactory) {
 
     /** The Xcode scheme to build. */
     val iosScheme: Property<String> = objects.property(String::class.java)
-}
 
+    /** Xcode build configuration. Defaults to "Release". */
+    val xcodeConfiguration: Property<String> = objects.property(String::class.java)
+
+    /** Xcode SDK destination. Defaults to "generic/platform=iOS". */
+    val sdkDestination: Property<String> = objects.property(String::class.java)
+
+    /** Target architecture (e.g. "arm64"). Optional — auto-detected if not set. */
+    val architecture: Property<String> = objects.property(String::class.java)
+
+    /** Custom derived data path. Optional — Xcode default used if not set. */
+    val derivedDataPath: Property<File> = objects.property(File::class.java)
+
+    /** Custom xcconfig file. Optional. */
+    val xcconfig: Property<File> = objects.property(File::class.java)
+
+    /** Timeout for xcodebuild operations in minutes. Defaults to 30. */
+    val xcodeTimeoutMinutes: Property<Int> = objects.property(Int::class.java)
+
+    // ── Link map settings ────────────────────────────────────────────────
+
+    /** Path to an existing Xcode link map file. */
+    val xcodeLinkMapFile: RegularFileProperty = objects.fileProperty()
+
+    /** Framework prefix for ObjC symbols in the link map. Defaults to frameworkBaseName or "Shared". */
+    val frameworkPrefix: Property<String> = objects.property(String::class.java)
+
+    // ── Analysis settings ────────────────────────────────────────────────
+
+    /**
+     * When false (default), the analyzeKmprofiler task fails if zero Swift source files
+     * are discovered in the configured directories. Set to true to allow analysis with
+     * no consumer sources (all declarations will be reported as candidates).
+     */
+    val allowEmptyConsumerSources: Property<Boolean> = objects.property(Boolean::class.java)
+}

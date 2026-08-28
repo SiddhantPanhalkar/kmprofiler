@@ -3,43 +3,54 @@ package io.github.siddhantpanhalkar.kmprofiler.model
 /**
  * Classification of a parsed ObjC declaration for report bucketing.
  *
- * The classification is intentionally conservative:
- *   - [LIKELY_EXTERNAL] is a heuristic, not a guarantee.
- *   - [KOTLIN_FILE_FACADE] means the exported name ends in the conventional `Kt` suffix.
- *   - [APP_CODE] is the default when no other naming pattern matches.
- *   - [USER_FLAGGED_EXTERNAL] means the user explicitly told the plugin this prefix
- *     is from an external library via [io.github.siddhantpanhalkar.kmprofiler.KmprofilerExtension.externalPrefixes].
+ * All classifications are heuristic. Name-based inference cannot prove ownership;
+ * only KLIB/module metadata can establish that.
+ *
+ *   - [APP_CODE] — default bucket; does not match any other pattern.
+ *   - [KOTLIN_FILE_FACADE] — name ends with `Kt` (Kotlin/Native emits these for
+ *     source files containing top-level functions). Ownership inference is reliable.
+ *   - [LIKELY_EXTERNAL] — name matches the Kotlin/Native ObjC name mangling pattern
+ *     (`ModuleName_submoduleTypeName`). Indicates cross-module origin but does not
+ *     prove the declaration belongs to a third-party dependency.
+ *   - [USER_FLAGGED_EXTERNAL] — user explicitly listed this prefix via
+ *     [io.github.siddhantpanhalkar.kmprofiler.KmprofilerExtension.externalPrefixes].
+ *     Affect grouping only; does not change safety recommendations.
  */
 enum class DeclarationCategory {
-    /** No external-module naming pattern, configured prefix, or file-facade suffix matched. */
+    /**
+     * Default bucket. No underscore module pattern detected, not a file facade.
+     * Ownership is unresolved without metadata.
+     */
     APP_CODE,
 
     /**
-     * Exported name with the conventional Kotlin file-facade `Kt` suffix.
-     * Example: `ColorKt` may wrap top-level declarations from `Color.kt`.
-     * Review the eligible declarations behind a facade individually. `HiddenFromObjC`
-     * is not valid as a file annotation.
+     * Top-level Kotlin file facade. Kotlin/Native emits a `*Kt` ObjC class for
+     * every Kotlin source file that contains top-level functions.
+     * Example: `ColorKt` wraps all top-level functions in `Color.kt`.
+     *
+     * If iOS never uses these functions, the developer should review eligible
+     * individual declarations for declaration-level `@HiddenFromObjC` or
+     * visibility changes — not apply file-level annotations.
      */
     KOTLIN_FILE_FACADE,
 
     /**
-     * Likely from an external Kotlin module, detected by the Kotlin/Native ObjC
-     * name mangling pattern: `ModuleName_submoduleTypeName`.
-     *
-     * The mangling uses underscores between Gradle module path segments, e.g.:
+     * Name resembles the Kotlin/Native ObjC name mangling pattern
+     * (`ModuleName_submoduleTypeName`), e.g.:
      *   `ktor-client-core` → `Ktor_client_core` prefix
      *   `koin-core`        → `Koin_core` prefix
      *   `kotlinx-coroutines-core` → `Kotlinx_coroutines_core` prefix
      *
-     * This pattern is only a classification hint. App code can have the same shape, and
-     * some external libraries use simple prefixes. Use [USER_FLAGGED_EXTERNAL] for
-     * known prefixes via the `externalPrefixes` extension property.
+     * This is a naming heuristic, not proof of external ownership. Some app-owned
+     * wrappers or transitive types may match. Use [USER_FLAGGED_EXTERNAL] for
+     * libraries the underscore heuristic misses via the `externalPrefixes` property.
      */
     LIKELY_EXTERNAL,
 
     /**
      * Matched a prefix the user explicitly listed in `externalPrefixes`.
-     * Use this for libraries the underscore heuristic misses (e.g. `Skiko`, `Material3`).
+     * Affects grouping in the report; does not change the safety recommendation.
+     * The developer must still review whether the declaration is truly external.
      */
     USER_FLAGGED_EXTERNAL,
 }

@@ -64,7 +64,7 @@ class GenerateLinkMapTaskFunctionalTest {
             .withArguments("generateKmprofilerLinkMap")
             .buildAndFail()
 
-        assertThat(result.output).contains("kmprofiler: Either 'iosWorkspace' or 'iosProject' must be configured to generate a link map.")
+        assertThat(result.output).contains("kmprofiler: Either 'iosWorkspace' or 'iosProject' must be configured.")
     }
 
     @Test

@@ -1,6 +1,13 @@
 package io.github.siddhantpanhalkar.kmprofiler.model
 
-/** A textual type-reference match found in a configured Swift source file. */
+/**
+ * Evidence for a single match of a declaration in a Swift source file.
+ *
+ * @property filePath Path to the Swift source file containing the match.
+ * @property lineNumber 1-based line number where the match was found.
+ * @property matchKind Type of match detected.
+ * @property matchedText The exact text that matched in the source.
+ */
 data class ScanEvidence(
     val filePath: String,
     val lineNumber: Int,
@@ -8,29 +15,32 @@ data class ScanEvidence(
     val matchedText: String,
 )
 
-/** The strength of evidence collected by the Swift source scan. */
+/**
+ * The kind of match found in Swift source code.
+ */
 enum class MatchKind {
-    /** A declaration name was found as a standalone token in executable Swift source. */
+    /** Declaration name found as a standalone type reference (e.g. `let x = Foo()`). */
     TYPE_REFERENCE,
 
-    /** No standalone declaration-name token was found in the configured Swift sources. */
+    /** One of the declaration's member selectors found as a standalone reference. */
+    MEMBER_REFERENCE,
+
+    /** Declaration name found in a comment or string literal — weak evidence. */
+    WEAK_TEXTUAL,
+
+    /** No reference found in any scanned file. */
     NO_REFERENCE,
 }
 
-/** A parsed exported declaration together with the evidence collected for it. */
-data class DeclarationScanResult(
-    val declaration: ExportedDeclaration,
-    val status: MatchKind,
-    val evidence: List<ScanEvidence> = emptyList(),
-) {
-    val name: String get() = declaration.name
-    val kind: DeclarationKind get() = declaration.kind
-    val memberCount: Int get() = declaration.memberCount
-    val category: DeclarationCategory get() = declaration.category
-
-    /**
-     * Only a declaration-name token counts as a reference. A globally matched member
-     * selector is deliberately not treated as evidence because its receiver is unknown.
-     */
-    val isReferenced: Boolean get() = status == MatchKind.TYPE_REFERENCE
+/**
+ * Confidence level for a match.
+ *
+ * HIGH: Type name found as standalone token in executable code.
+ * MEDIUM: Member selector found but type name not found as standalone token.
+ * LOW: Name found only in comments or string literals.
+ */
+enum class Confidence {
+    HIGH,
+    MEDIUM,
+    LOW,
 }

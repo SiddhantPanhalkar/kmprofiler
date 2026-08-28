@@ -4,6 +4,7 @@ import io.github.siddhantpanhalkar.kmprofiler.classifier.DeclarationClassifier
 import io.github.siddhantpanhalkar.kmprofiler.model.ConfigLintResult
 import io.github.siddhantpanhalkar.kmprofiler.model.DeclarationCategory
 import io.github.siddhantpanhalkar.kmprofiler.model.ScanResult
+import io.github.siddhantpanhalkar.kmprofiler.ownership.KotlinOwnershipResolver
 import io.github.siddhantpanhalkar.kmprofiler.parser.ObjCHeaderParser
 import io.github.siddhantpanhalkar.kmprofiler.report.MarkdownReportRenderer
 import io.github.siddhantpanhalkar.kmprofiler.scanner.SwiftUsageScanner
@@ -57,14 +58,14 @@ abstract class AnalyzeKmprofilerTask : DefaultTask() {
 
     @TaskAction
     fun analyze() {
-        val resolvedHeaderFile = headerFile.get().asFile
-        val header = resolvedHeaderFile.readText()
+        val header = headerFile.get().asFile.readText()
         val swiftDir = swiftSources.files
+        val headerFile = headerFile.get().asFile
 
         if (header.isBlank()) {
             throw GradleException(
-                "Header file is empty: ${resolvedHeaderFile.absolutePath}. " +
-                        "Link the iOS framework before running analyzeKmprofiler."
+                "Header file is empty: ${headerFile.absolutePath}. " +
+                        "Ensure the framework has been linked before running this task."
             )
         }
 
@@ -72,17 +73,26 @@ abstract class AnalyzeKmprofilerTask : DefaultTask() {
         val classifier = DeclarationClassifier(externalPrefixes.get().toSet())
         val classified = declarations.map { it.copy(category = classifier.classify(it)) }
 
-        val scanOutput = SwiftUsageScanner().scan(classified, swiftDir)
-        if (scanOutput.scannedFileCount == 0 && !allowEmptyConsumerSources.get()) {
+        val scanner = SwiftUsageScanner()
+        val scanOutput = scanner.findUnreferenced(classified, swiftDir)
+
+        if (scanOutput.scannedFileCount == 0 && !allowEmptyConsumerSources.getOrElse(false)) {
             throw GradleException(
-                "No Swift source files were found in the configured swiftSourceDirs: " +
-                        swiftDir.joinToString { it.absolutePath } + ". " +
-                        "Set swiftSourceDirs to Swift consumer sources, or set " +
-                        "allowEmptyConsumerSources = true to run a header-only audit."
+                "No Swift source files found in the configured directories: " +
+                        "${swiftDir.joinToString { it.absolutePath }}. " +
+                        "Either:\n" +
+                        "  1. Set `swiftSourceDirs` to point at your Swift consumer sources, or\n" +
+                        "  2. Set `allowEmptyConsumerSources = true` in your `kmprofiler {}` block " +
+                        "to allow analysis with no consumer sources (all declarations will be reported as candidates)."
             )
         }
 
         val unreferenced = scanOutput.unreferenced
+
+        // Run ownership resolver on unreferenced declarations
+        val ownershipResolver = KotlinOwnershipResolver()
+        val ownershipResults = ownershipResolver.resolve(unreferenced)
+        val remediation = ownershipResults.mapValues { it.value.category }
 
         val result = ScanResult(
             totalExported = declarations.size,
@@ -99,8 +109,9 @@ abstract class AnalyzeKmprofilerTask : DefaultTask() {
             ),
             scannedFileCount = scanOutput.scannedFileCount,
             scannedLineCount = scanOutput.scannedLineCount,
-            headerPath = resolvedHeaderFile.absolutePath,
-            headerTimestamp = resolvedHeaderFile.lastModified(),
+            headerPath = headerFile.absolutePath,
+            headerTimestamp = headerFile.lastModified(),
+            remediation = remediation,
         )
 
         val report = MarkdownReportRenderer.render(result)
@@ -110,6 +121,6 @@ abstract class AnalyzeKmprofilerTask : DefaultTask() {
         }
 
         logger.lifecycle("\n$report")
-        logger.lifecycle("Full report written to: ${reportOutput.get().asFile.absolutePath}")
+        logger.lifecycle("📄 Full report written to: ${reportOutput.get().asFile.absolutePath}")
     }
 }

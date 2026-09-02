@@ -19,21 +19,32 @@ class AttributionReportRenderer {
             appendLine("### kmprofiler: Symbol Attribution")
             appendLine()
             appendLine("#### Module Breakdown")
-            appendLine("| Module | Bytes | Symbols |")
-            appendLine("|---|---|---|")
+            appendLine()
+            appendLine("| Module | Binary Size | Symbols | % of Total |")
+            appendLine("|:---|---:|---:|---:|")
             for ((module, bytes) in byModule) {
                 val count = attributions.count { it.moduleName == module }
-                appendLine("| $module | ${formatBytes(bytes)} | $count |")
+                val pct = if (totalBytes > 0) {
+                    String.format(Locale.US, "%.1f%%", bytes.toDouble() / totalBytes * 100)
+                } else "0.0%"
+                val formattedCount = String.format(Locale.US, "%,d", count)
+                appendLine("| `$module` | ${formatBytes(bytes)} | $formattedCount | $pct |")
             }
             appendLine()
-            appendLine("#### Top Symbols by Size")
-            appendLine("| Symbol | Size | Object File | Module | Category |")
-            appendLine("|---|---|---|---|---|")
+            appendLine("#### Top 50 Symbols by Size")
+            appendLine()
+            appendLine("| Symbol | Size | Module | Category | Object File |")
+            appendLine("|:---|---:|:---|:---|:---|")
             val topSymbols = attributions.take(50)
             for (attr in topSymbols) {
                 val shortPath = shortenPath(attr.objectFilePath)
-                val category = attr.category ?: "—"
-                appendLine("| `${attr.symbolName}` | ${formatBytes(attr.sizeBytes)} | $shortPath | ${attr.moduleName} | $category |")
+                val category = attr.category?.let { "`$it`" } ?: "—"
+                val displaySymbol = if (attr.symbolName.length > 80) {
+                    attr.symbolName.take(77) + "..."
+                } else {
+                    attr.symbolName
+                }
+                appendLine("| `$displaySymbol` | ${formatBytes(attr.sizeBytes)} | `${attr.moduleName}` | $category | `$shortPath` |")
             }
         }
     }

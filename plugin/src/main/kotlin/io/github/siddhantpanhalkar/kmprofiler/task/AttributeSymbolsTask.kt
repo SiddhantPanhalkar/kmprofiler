@@ -16,6 +16,7 @@ import java.util.Locale
 abstract class AttributeSymbolsTask : DefaultTask() {
 
     @get:InputFile
+    @get:Optional
     abstract val linkMapFile: RegularFileProperty
 
     @get:Input
@@ -27,8 +28,15 @@ abstract class AttributeSymbolsTask : DefaultTask() {
 
     @TaskAction
     fun attribute() {
+        if (!linkMapFile.isPresent) {
+            throw GradleException(
+                "kmprofiler: Link map file is not configured. " +
+                    "Specify 'xcodeLinkMapFile' in kmprofiler extension or configure 'iosScheme' to generate it automatically."
+            )
+        }
+
         val mapFile = linkMapFile.get().asFile
-        if (!mapFile.exists()) {
+        if (!mapFile.exists() || !mapFile.isFile) {
             throw GradleException("kmprofiler: Link map file does not exist: ${mapFile.absolutePath}")
         }
 

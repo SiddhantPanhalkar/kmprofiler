@@ -45,22 +45,25 @@ abstract class AnalyzeKmprofilerBinaryTask : DefaultTask() {
         val markdown = buildString {
             appendLine("### kmprofiler: iOS Binary Size Breakdown")
             appendLine()
-            appendLine("#### Coverage")
-            appendLine("- **Total symbols:** ${result.symbolCount}")
-            appendLine("- **Classified symbols:** ${result.classifiedSymbolCount}")
-            appendLine("- **Total mapped bytes:** ${formatBytes(result.totalMappedBytes)}")
-            appendLine("- **Classified bytes:** ${formatBytes(result.classifiedBytes)}")
-            appendLine("- **Unclassified bytes:** ${formatBytes(result.unclassifiedBytes)}")
-            appendLine("- **Coverage:** ${String.format(Locale.US, "%.1f%%", result.coveragePercentage)}")
-            if (result.coveragePercentage < 50.0) {
-                appendLine("- **Note:** Coverage is low. The link map may be incomplete or the `frameworkPrefix` may not match.")
-            }
+            appendLine("#### Summary")
+            appendLine()
+            appendLine("| Metric | Value |")
+            appendLine("|:---|---:|")
+            appendLine("| Total Symbols | ${String.format(Locale.US, "%,d", result.symbolCount)} |")
+            appendLine("| Classified Kotlin Symbols | ${String.format(Locale.US, "%,d", result.classifiedSymbolCount)} |")
+            appendLine("| Total App Binary Size | ${formatBytes(result.totalMappedBytes)} |")
+            appendLine("| Total Kotlin & KMP Size | ${formatBytes(result.classifiedBytes)} (${String.format(Locale.US, "%.1f%%", result.coveragePercentage)}) |")
+            appendLine("| Native iOS / Swift / Pods Size | ${formatBytes(result.unclassifiedBytes)} (${String.format(Locale.US, "%.1f%%", 100.0 - result.coveragePercentage)}) |")
             appendLine()
             appendLine("#### Package / Category Breakdown")
-            appendLine("| Package / Category | Binary Size |")
-            appendLine("|---|---|")
+            appendLine()
+            appendLine("| Package / Category | Binary Size | % of Total |")
+            appendLine("|:---|---:|---:|")
             for ((category, sizeBytes) in result.categories) {
-                appendLine("| $category | ${formatBytes(sizeBytes)} |")
+                val pct = if (result.totalMappedBytes > 0) {
+                    String.format(Locale.US, "%.1f%%", sizeBytes.toDouble() / result.totalMappedBytes * 100)
+                } else "0.0%"
+                appendLine("| `$category` | ${formatBytes(sizeBytes)} | $pct |")
             }
         }
 

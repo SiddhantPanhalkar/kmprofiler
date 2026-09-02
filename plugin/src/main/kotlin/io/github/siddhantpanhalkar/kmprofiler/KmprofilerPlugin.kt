@@ -91,7 +91,7 @@ class KmprofilerPlugin : Plugin<Project> {
 
         // ── V2: Symbol attribution ───────────────────────────────────────
 
-        project.tasks.register(
+        val attributeSymbolsTask = project.tasks.register(
             "attributeKmprofilerSymbols",
             AttributeSymbolsTask::class.java
         ) { task ->
@@ -133,6 +133,12 @@ class KmprofilerPlugin : Plugin<Project> {
         project.afterEvaluate {
             if (extension.iosScheme.isPresent) {
                 profileBinaryTask.configure { task ->
+                    task.dependsOn("generateKmprofilerLinkMap")
+                    if (!extension.xcodeLinkMapFile.isPresent) {
+                        task.linkMapFile.set(generateTask.flatMap { it.linkMapOutput })
+                    }
+                }
+                attributeSymbolsTask.configure { task ->
                     task.dependsOn("generateKmprofilerLinkMap")
                     if (!extension.xcodeLinkMapFile.isPresent) {
                         task.linkMapFile.set(generateTask.flatMap { it.linkMapOutput })

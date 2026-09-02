@@ -16,21 +16,21 @@ class ComparisonReportRenderer {
             appendLine("### kmprofiler: Binary Size Comparison")
             appendLine()
             appendLine("#### Build Equivalence")
-            appendLine("- **Baseline total:** ${formatBytes(baseline.totalMappedBytes)} (${baseline.symbolCount} symbols)")
-            appendLine("- **Candidate total:** ${formatBytes(candidate.totalMappedBytes)} (${candidate.symbolCount} symbols)")
-            appendLine("- **Delta:** ${formatBytesDelta(comparison.totalDelta)}")
-            appendLine("- **Baseline coverage:** ${String.format(Locale.US, "%.1f%%", baseline.coveragePercentage)}")
-            appendLine("- **Candidate coverage:** ${String.format(Locale.US, "%.1f%%", candidate.coveragePercentage)}")
+            appendLine("| Metric | Baseline | Candidate | Delta |")
+            appendLine("|:---|---:|---:|---:|")
+            appendLine("| Total Mapped Size | ${formatBytes(baseline.totalMappedBytes)} | ${formatBytes(candidate.totalMappedBytes)} | ${formatBytesDelta(comparison.totalDelta)} |")
+            appendLine("| Symbol Count | ${String.format(Locale.US, "%,d", baseline.symbolCount)} | ${String.format(Locale.US, "%,d", candidate.symbolCount)} | ${String.format(Locale.US, "%+d", candidate.symbolCount - baseline.symbolCount)} |")
+            appendLine("| Kotlin Coverage | ${String.format(Locale.US, "%.1f%%", baseline.coveragePercentage)} | ${String.format(Locale.US, "%.1f%%", candidate.coveragePercentage)} | ${String.format(Locale.US, "%+.1f%%", candidate.coveragePercentage - baseline.coveragePercentage)} |")
             if (comparison.equivalenceWarnings.isNotEmpty()) {
                 appendLine()
                 for (warning in comparison.equivalenceWarnings) {
-                    appendLine("> **Warning:** $warning")
+                    appendLine("> ⚠️ **Warning:** $warning")
                 }
             }
             appendLine()
             appendLine("#### Category Deltas")
-            appendLine("| Category | Baseline | Candidate | Delta | Delta % |")
-            appendLine("|---|---|---|---|---|")
+            appendLine("| Category | Baseline | Candidate | Delta | Change |")
+            appendLine("|:---|---:|---:|---:|---:|")
             val sortedDeltas = comparison.categoryDeltas.entries.sortedByDescending { it.value.deltaBytes }
             for ((category, delta) in sortedDeltas) {
                 val deltaStr = formatBytesDelta(delta.deltaBytes)
@@ -39,7 +39,7 @@ class ComparisonReportRenderer {
                 } else {
                     "n/a"
                 }
-                appendLine("| $category | ${formatBytes(delta.baselineBytes)} | ${formatBytes(delta.candidateBytes)} | $deltaStr | $pctStr |")
+                appendLine("| `$category` | ${formatBytes(delta.baselineBytes)} | ${formatBytes(delta.candidateBytes)} | $deltaStr | $pctStr |")
             }
         }
     }

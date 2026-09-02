@@ -264,7 +264,11 @@ class LinkMapParser {
                 val header = ByteArray(4096)
                 val bytesRead = reader.read(header)
                 if (bytesRead <= 0) return false
-                String(header, 0, bytesRead).contains("# Symbols:")
+                val headerStr = String(header, 0, bytesRead)
+                headerStr.contains("# Path:") ||
+                        headerStr.contains("# Arch:") ||
+                        headerStr.contains("# Object files:") ||
+                        headerStr.contains("# Symbols:")
             }
         } catch (e: Exception) {
             false

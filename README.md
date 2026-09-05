@@ -1,5 +1,6 @@
 # kmprofiler
 
+<!--suppress HtmlDeprecatedAttribute -->
 <p align="center">
   <a href="https://github.com/SiddhantPanhalkar/kmprofiler/actions/workflows/ci.yml"><img src="https://github.com/SiddhantPanhalkar/kmprofiler/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
@@ -9,6 +10,7 @@
   <img src="https://visitor-badge.laobi.icu/badge?page_id=SiddhantPanhalkar.kmprofiler" alt="Visitors">
 </p>
 
+<!--suppress HtmlDeprecatedAttribute -->
 <p align="center">
   <b>A Gradle plugin for auditing Kotlin Multiplatform iOS export surfaces and measuring linked binary size.</b><br>
   Finds Objective-C declarations for review and groups linked Kotlin symbols in your iOS app.
@@ -68,7 +70,11 @@ plugins {
 
 kmprofiler {
     // Export surface audit settings
-    headerFile.set(layout.buildDirectory.file("bin/iosArm64/releaseFramework/Shared.framework/Headers/Shared.h"))
+    headerFile.set(
+        layout.buildDirectory.file(
+            "bin/iosArm64/releaseFramework/Shared.framework/Headers/Shared.h"
+        )
+    )
     swiftSourceDirs.setFrom(layout.projectDirectory.dir("../iosApp"))
 
     // Xcode binary profiling settings
@@ -217,18 +223,18 @@ These examples come from profiling `framed-app`, a real Kotlin Multiplatform pro
 
 #### Your code: review candidates (96)
 
-| Declaration | Kind | Members | Confidence | Remediation | Evidence |
-|---|---|---|---|---|---|
-| `HomeViewModel` | class | 55 | high | manual review only | none |
-| `FilterRecipe` | class | 13 | high | manual review only | none |
-| `CameraController` | protocol | 16 | high | manual review only | none |
+| Declaration        | Kind     | Members | Confidence | Remediation        | Evidence |
+|--------------------|----------|--------:|------------|--------------------|----------|
+| `HomeViewModel`    | class    |      55 | high       | manual review only | none     |
+| `FilterRecipe`     | class    |      13 | high       | manual review only | none     |
+| `CameraController` | protocol |      16 | high       | manual review only | none     |
 
 #### Kotlin file facades: review candidates (13)
 
-| Declaration | Members | Confidence | Remediation | Evidence |
-|---|---|---|---|---|
-| `AppModuleKt` | 7 | high | manual review only | none |
-| `LutGeneratorKt` | 2 | high | manual review only | none |
+| Declaration      | Members | Confidence | Remediation        | Evidence |
+|------------------|--------:|------------|--------------------|----------|
+| `AppModuleKt`    |       7 | high       | manual review only | none     |
+| `LutGeneratorKt` |       2 | high       | manual review only | none     |
 ```
 
 ### Binary size breakdown (`profileIosBinary`)
@@ -238,24 +244,24 @@ These examples come from profiling `framed-app`, a real Kotlin Multiplatform pro
 
 #### Summary
 
-| Metric | Value |
-|:---|---:|
-| Total Symbols | 333,144 |
-| Classified Symbols | 31,392 |
-| Total Mapped Symbol Size | 49.34 MB |
+| Metric                       |            Value |
+|------------------------------|-----------------:|
+| Total Symbols                |          333,144 |
+| Classified Symbols           |           31,392 |
+| Total Mapped Symbol Size     |         49.34 MB |
 | Total Classified Mapped Size | 18.12 MB (36.7%) |
-| Unclassified Mapped Symbols | 31.22 MB (63.3%) |
+| Unclassified Mapped Symbols  | 31.22 MB (63.3%) |
 
 #### Package / Category Breakdown
 
-| Package / Category | Binary Size | % of Total |
-|:---|---:|---:|
-| `androidx.compose` | 9.29 MB | 18.8% |
-| `framed.shared` | 1.81 MB | 3.7% |
-| `com.framed` | 1.49 MB | 3.0% |
-| `io.ktor` | 856.70 KB | 1.7% |
-| `kotlinx.serialization` | 516.61 KB | 1.0% |
-| `[iOS Export Surface]` | 22.58 KB | < 0.1% |
+| Package / Category      | Binary Size | % of Total |
+|-------------------------|------------:|-----------:|
+| `androidx.compose`      |     9.29 MB |      18.8% |
+| `framed.shared`         |     1.81 MB |       3.7% |
+| `com.framed`            |     1.49 MB |       3.0% |
+| `io.ktor`               |   856.70 KB |       1.7% |
+| `kotlinx.serialization` |   516.61 KB |       1.0% |
+| `[iOS Export Surface]`  |    22.58 KB |     < 0.1% |
 ```
 
 ### Symbol attribution (`attributeKmprofilerSymbols`)
@@ -266,12 +272,12 @@ These examples come from profiling `framed-app`, a real Kotlin Multiplatform pro
 #### Object-file and library breakdown
 
 | Object-file or library name | Mapped Size | Symbols | % of Total |
-|:---|---:|---:|---:|
-| `Shared` | 46.25 MB | 276,206 | 93.7% |
-| `GoogleAppMeasurement` | 980.52 KB | 12,064 | 1.9% |
-| `unknown` | 700.76 KB | 16,477 | 1.4% |
-| `FirebaseCrashlytics` | 255.06 KB | 4,074 | 0.5% |
-| `FirebaseSharedSwift` | 169.03 KB | 1,773 | 0.3% |
+|-----------------------------|------------:|--------:|-----------:|
+| `Shared`                    |    46.25 MB | 276,206 |      93.7% |
+| `GoogleAppMeasurement`      |   980.52 KB |  12,064 |       1.9% |
+| `unknown`                   |   700.76 KB |  16,477 |       1.4% |
+| `FirebaseCrashlytics`       |   255.06 KB |   4,074 |       0.5% |
+| `FirebaseSharedSwift`       |   169.03 KB |   1,773 |       0.3% |
 ```
 
 ---
@@ -348,11 +354,9 @@ The plugin clearly separates direct measurements from heuristics:
 
 ## Scope and roadmap
 
-- [x] **v0.1.0**: Objective-C export surface profiling, 3-tier classification, and static
-  configuration linting.
+- [x] **v0.1.0**: Objective-C export surface profiling, 3-tier classification, and static configuration linting.
 - [x] **v0.1.1**: Token-aware Swift matching, scan provenance, and conservative review guidance.
-- [x] **v0.2.0**: Automated Xcode link map generation, streaming symbol profiler, module
-  attribution, and baseline comparison.
+- [x] **v0.2.0**: Automated Xcode link map generation, streaming symbol profiler, module attribution, and baseline comparison.
 - [ ] **v0.3.0**: Deeper Kotlin compiler graph analysis and public API exposure tracing.
 
 ---
@@ -364,7 +368,7 @@ The plugin clearly separates direct measurements from heuristics:
 ./gradlew :plugin:publishToMavenLocal
 ```
 
-See the sample project in [`sample/`](sample/) for a minimal configuration.
+See the sample project in [`sample`](sample/README.md) for a minimal configuration.
 
 ---
 

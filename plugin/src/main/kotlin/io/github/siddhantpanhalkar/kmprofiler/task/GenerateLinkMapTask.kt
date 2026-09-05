@@ -71,12 +71,12 @@ abstract class GenerateLinkMapTask : DefaultTask() {
         }
 
         val configuration = xcodeConfiguration.orNull?.takeIf { it.isNotBlank() } ?: "Release"
-        val destination = sdkDestination.orNull?.takeIf { it.isNotBlank() } ?: "generic/platform=iOS"
+        val destination =
+            sdkDestination.orNull?.takeIf { it.isNotBlank() } ?: "generic/platform=iOS"
         val timeout = timeoutMinutes.orNull?.toLong() ?: 30L
 
         logger.lifecycle("Building iOS app with xcodebuild ($targetFlag ${targetFile.absolutePath}, scheme: $scheme, configuration: $configuration)...")
 
-        // Build with map file generation enabled
         val buildArgs = mutableListOf(
             "xcodebuild",
             targetFlag,
@@ -90,7 +90,6 @@ abstract class GenerateLinkMapTask : DefaultTask() {
             "LD_GENERATE_MAP_FILE=YES",
         )
 
-        // Optional arguments
         architecture.orNull?.takeIf { it.isNotBlank() }?.let { arch ->
             buildArgs.addAll(listOf("-arch", arch))
         }
@@ -105,7 +104,6 @@ abstract class GenerateLinkMapTask : DefaultTask() {
 
         executeProcess(buildArgs, "xcodebuild clean build", timeoutMinutes = timeout)
 
-        // Fetch build settings to locate TARGET_TEMP_DIR
         val settingsArgs = mutableListOf(
             "xcodebuild",
             targetFlag,
@@ -114,43 +112,80 @@ abstract class GenerateLinkMapTask : DefaultTask() {
             scheme,
             "-configuration",
             configuration,
-            "-showBuildSettings",
+            "-destination",
+            destination,
         )
         architecture.orNull?.takeIf { it.isNotBlank() }?.let { arch ->
             settingsArgs.addAll(listOf("-arch", arch))
         }
-
-        val settingsOutput = executeProcessCapture(settingsArgs, "xcodebuild -showBuildSettings", timeoutMinutes = 5)
-
-        // Parse TARGET_TEMP_DIR
-        val targetTempDirRegex = Regex("""^\s*TARGET_TEMP_DIR\s*=\s*(.+)$""")
-        val targetTempDirPath = settingsOutput.lines()
-            .mapNotNull { line -> targetTempDirRegex.find(line)?.groupValues?.get(1)?.trim() }
-            .firstOrNull { it.isNotEmpty() }
-            ?: throw GradleException("kmprofiler: Could not find TARGET_TEMP_DIR in xcodebuild -showBuildSettings output.")
-
-        val targetTempDir = File(targetTempDirPath)
-        if (!targetTempDir.exists()) {
-            throw GradleException("kmprofiler: TARGET_TEMP_DIR directory does not exist: $targetTempDirPath")
+        derivedDataPath.orNull?.let { dd ->
+            settingsArgs.addAll(listOf("-derivedDataPath", dd.absolutePath))
         }
+        xcconfig.orNull?.let { xc ->
+            settingsArgs.addAll(listOf("-xcconfig", xc.absolutePath))
+        }
+        settingsArgs.add("-showBuildSettings")
 
-        // Find link map matching *-LinkMap-*-arm64.txt
-        val linkMapPattern = Regex(".*-LinkMap-.*-arm64\\.txt")
-        val linkMapFile = targetTempDir.walkTopDown()
-            .filter { it.isFile && it.name.matches(linkMapPattern) }
-            .maxByOrNull { it.lastModified() }
-            ?: throw GradleException(
-                "kmprofiler: Link map file matching '*-LinkMap-*-arm64.txt' not found in $targetTempDirPath. " +
-                        "Ensure the build produces a link map (LD_GENERATE_MAP_FILE=YES) and the target architecture is arm64."
-            )
+        val settingsOutput =
+            executeProcessCapture(settingsArgs, "xcodebuild -showBuildSettings", timeoutMinutes = 5)
 
-        // Copy link map to task output destination
+        val targetTempDirPath = extractSetting(settingsOutput, "TARGET_TEMP_DIR")
+        val resolvedArch = resolveArchitecture(architecture.orNull, settingsOutput)
+        val linkMapFile = resolveLinkMapFile(settingsOutput, architecture.orNull)
+            ?: throw GradleException("kmprofiler: Link map file not found in $targetTempDirPath for architecture $resolvedArch. Ensure LD_GENERATE_MAP_FILE=YES is set.")
+
         val output = linkMapOutput.get().asFile
         output.parentFile?.mkdirs()
         linkMapFile.copyTo(output, overwrite = true)
 
         logger.lifecycle("Link map successfully generated and copied to: ${output.absolutePath}")
     }
+
+
+    companion object {
+        fun extractSetting(settingsOutput: String, settingName: String): String? {
+            val regex = Regex("""^\s*${Regex.escape(settingName)}\s*=\s*(.+)$""")
+            return settingsOutput.lines()
+                .mapNotNull { line -> regex.find(line)?.groupValues?.get(1)?.trim() }
+                .firstOrNull { it.isNotEmpty() }
+        }
+
+        fun resolveArchitecture(configuredArch: String?, settingsOutput: String): String {
+            return configuredArch?.takeIf { it.isNotBlank() && it != "undefined_arch" }
+                ?: extractSetting(settingsOutput, "ARCHS")?.split("""\s+""".toRegex())
+                    ?.firstOrNull { it.isNotBlank() && it != "undefined_arch" }
+                ?: extractSetting(
+                    settingsOutput,
+                    "NATIVE_ARCH_ACTUAL"
+                )?.takeIf { it.isNotBlank() && it != "undefined_arch" }
+                ?: extractSetting(
+                    settingsOutput,
+                    "CURRENT_ARCH"
+                )?.takeIf { it.isNotBlank() && it != "undefined_arch" }
+                ?: "arm64"
+        }
+
+        fun resolveLinkMapFile(settingsOutput: String, configuredArch: String?): File? {
+            val ldMapFilePath = extractSetting(settingsOutput, "LD_MAP_FILE_PATH")
+            if (ldMapFilePath != null && !ldMapFilePath.contains("undefined_arch")) {
+                val directFile = File(ldMapFilePath)
+                if (directFile.exists() && directFile.isFile) {
+                    return directFile
+                }
+            }
+
+            val targetTempDirPath = extractSetting(settingsOutput, "TARGET_TEMP_DIR") ?: return null
+            val targetTempDir = File(targetTempDirPath)
+            if (!targetTempDir.exists() || !targetTempDir.isDirectory) return null
+
+            val resolvedArch = resolveArchitecture(configuredArch, settingsOutput)
+            val linkMapPattern = Regex(".*-LinkMap-.*-$resolvedArch\\.txt")
+            return targetTempDir.walkTopDown()
+                .filter { it.isFile && it.name.matches(linkMapPattern) }
+                .maxByOrNull { it.lastModified() }
+        }
+    }
+
 
     private fun executeProcess(
         command: List<String>,

@@ -2,14 +2,7 @@ package io.github.siddhantpanhalkar.kmprofiler.parser
 
 import java.io.File
 
-/**
- * Streams through an Xcode link map file and attributes byte sizes to categories.
- *
- * Supports:
- * - Symbol parsing with coverage stats
- * - Object-file attribution (maps symbols to source object files)
- * - Baseline/candidate comparison (byte deltas between builds)
- */
+/** Reads an Xcode link map line by line and groups mapped symbol bytes. */
 class LinkMapParser {
 
     /**
@@ -18,12 +11,14 @@ class LinkMapParser {
      * @property categories Map of category name to total byte size.
      * @property totalMappedBytes Total bytes of all symbols in the map.
      * @property classifiedBytes Total bytes attributed to categories.
-     * @property unclassifiedBytes totalMappedBytes - classifiedBytes.
+     * @property unclassifiedBytes Bytes not assigned to a known category.
      * @property coveragePercentage Percentage of bytes classified.
      * @property symbolCount Total number of symbols parsed.
      * @property classifiedSymbolCount Number of symbols that matched a category.
      * @property objectFiles Map of object file index to source path.
-     * @property symbols List of (symbolName, sizeBytes, objectFileIndex) tuples.
+     * @property symbols Parsed symbols, collected only when attribution needs them.
+     * @property isValid Whether the file contains the required link map sections.
+     * @property symbolsSectionFound Whether the `# Symbols:` section was found.
      */
     data class ParseResult(
         val categories: Map<String, Long>,
@@ -33,6 +28,8 @@ class LinkMapParser {
         val classifiedSymbolCount: Long,
         val objectFiles: Map<Int, String> = emptyMap(),
         val symbols: List<SymbolEntry> = emptyList(),
+        val isValid: Boolean = true,
+        val symbolsSectionFound: Boolean = true,
     ) {
         val unclassifiedBytes: Long get() = totalMappedBytes - classifiedBytes
         val coveragePercentage: Double
@@ -112,12 +109,14 @@ class LinkMapParser {
             Regex("""/([^/]+)\.o$""")
     }
 
-    /**
-     * Parses the link map file and returns a [ParseResult] with categorized byte sizes.
-     */
-    fun parse(mapFile: File, frameworkPrefix: String): ParseResult {
-        if (!mapFile.exists() || !mapFileValid(mapFile)) {
-            return emptyResult()
+    /** Parses a link map and returns grouped byte totals and optional symbol entries. */
+    fun parse(
+        mapFile: File,
+        frameworkPrefix: String,
+        collectSymbols: Boolean = false
+    ): ParseResult {
+        if (!mapFile.exists() || !mapFile.isFile || mapFile.length() == 0L) {
+            return emptyResult(isValid = false, symbolsSectionFound = false)
         }
 
         val aggregated = mutableMapOf<String, Long>()
@@ -128,14 +127,24 @@ class LinkMapParser {
         val objectFiles = mutableMapOf<Int, String>()
         val symbols = mutableListOf<SymbolEntry>()
         var currentSection: String? = null
+        var hasValidHeader = false
+        var symbolsSectionFound = false
 
         mapFile.useLines { lines ->
             for (rawLine in lines) {
                 val line = rawLine.trim()
                 if (line.isEmpty()) continue
 
-                // Detect section transitions
                 if (line.startsWith("# ")) {
+                    if (line.startsWith("# Path:") || line.startsWith("# Arch:") || line.startsWith(
+                            "# Object files:"
+                        ) || line.startsWith("# Symbols:")
+                    ) {
+                        hasValidHeader = true
+                    }
+                    if (line.startsWith("# Symbols:")) {
+                        symbolsSectionFound = true
+                    }
                     currentSection = when {
                         line.startsWith("# Object files:") -> "objectFiles"
                         line.startsWith("# Symbols:") -> "symbols"
@@ -155,6 +164,7 @@ class LinkMapParser {
                             objectFiles[index] = path
                         }
                     }
+
                     "symbols" -> {
                         val match = SYMBOL_LINE_REGEX.find(line) ?: continue
                         val sizeHex = match.groupValues[1]
@@ -173,7 +183,9 @@ class LinkMapParser {
                             aggregated[category] = (aggregated[category] ?: 0L) + size
                         }
 
-                        symbols.add(SymbolEntry(symbolName, size, fileIndex, category))
+                        if (collectSymbols) {
+                            symbols.add(SymbolEntry(symbolName, size, fileIndex, category))
+                        }
                     }
                 }
             }
@@ -183,6 +195,7 @@ class LinkMapParser {
             .sortedByDescending { it.value }
             .associate { it.key to it.value }
 
+        val isValid = hasValidHeader && symbolsSectionFound
         return ParseResult(
             categories = sortedCategories,
             totalMappedBytes = totalMappedBytes,
@@ -191,17 +204,29 @@ class LinkMapParser {
             classifiedSymbolCount = classifiedSymbolCount,
             objectFiles = objectFiles.toMap(),
             symbols = symbols,
+            isValid = isValid,
+            symbolsSectionFound = symbolsSectionFound
         )
     }
 
-    /**
-     * Compares a baseline and candidate link map to produce a delta report.
-     */
-    fun compare(baselineFile: File, candidateFile: File, frameworkPrefix: String): ComparisonResult {
-        val baseline = parse(baselineFile, frameworkPrefix)
-        val candidate = parse(candidateFile, frameworkPrefix)
+    /** Compares mapped symbol totals from a baseline and candidate link map. */
+    fun compare(
+        baselineFile: File,
+        candidateFile: File,
+        frameworkPrefix: String
+    ): ComparisonResult {
+        val baseline = parse(baselineFile, frameworkPrefix, collectSymbols = false)
+        val candidate = parse(candidateFile, frameworkPrefix, collectSymbols = false)
+
+        if (!baseline.isValid || baseline.symbolCount == 0L) {
+            throw IllegalArgumentException("kmprofiler: Baseline link map invalid or has 0 symbols: ${baselineFile.absolutePath}")
+        }
+        if (!candidate.isValid || candidate.symbolCount == 0L) {
+            throw IllegalArgumentException("kmprofiler: Candidate link map invalid or has 0 symbols: ${candidateFile.absolutePath}")
+        }
 
         val allCategories = baseline.categories.keys + candidate.categories.keys
+
         val categoryDeltas = allCategories.associateWith { category ->
             val baseBytes = baseline.categories[category] ?: 0L
             val candBytes = candidate.categories[category] ?: 0L
@@ -230,9 +255,7 @@ class LinkMapParser {
         )
     }
 
-    /**
-     * Returns per-symbol attribution to object files.
-     */
+    /** Returns each collected symbol with its object-file and library attribution. */
     fun attributeSymbols(parseResult: ParseResult): List<SymbolAttribution> {
         return parseResult.symbols.map { entry ->
             val filePath = parseResult.objectFiles[entry.objectFileIndex] ?: "unknown"
@@ -248,32 +271,17 @@ class LinkMapParser {
         }.sortedByDescending { it.sizeBytes }
     }
 
-    private fun emptyResult() = ParseResult(
-        categories = emptyMap(),
-        totalMappedBytes = 0,
-        classifiedBytes = 0,
-        symbolCount = 0,
-        classifiedSymbolCount = 0,
-    )
+    private fun emptyResult(isValid: Boolean = false, symbolsSectionFound: Boolean = false) =
+        ParseResult(
+            categories = emptyMap(),
+            totalMappedBytes = 0,
+            classifiedBytes = 0,
+            symbolCount = 0,
+            classifiedSymbolCount = 0,
+            isValid = isValid,
+            symbolsSectionFound = symbolsSectionFound
+        )
 
-    private fun mapFileValid(file: File): Boolean {
-        if (!file.isFile) return false
-        if (file.length() == 0L) return false
-        return try {
-            file.inputStream().buffered().use { reader ->
-                val header = ByteArray(4096)
-                val bytesRead = reader.read(header)
-                if (bytesRead <= 0) return false
-                val headerStr = String(header, 0, bytesRead)
-                headerStr.contains("# Path:") ||
-                        headerStr.contains("# Arch:") ||
-                        headerStr.contains("# Object files:") ||
-                        headerStr.contains("# Symbols:")
-            }
-        } catch (e: Exception) {
-            false
-        }
-    }
 
     private fun parseObjectFileLine(line: String): Pair<Int, String>? {
         val match = OBJECT_FILE_LINE_REGEX.find(line) ?: return null

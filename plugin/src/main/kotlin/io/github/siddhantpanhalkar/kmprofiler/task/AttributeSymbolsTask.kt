@@ -31,7 +31,7 @@ abstract class AttributeSymbolsTask : DefaultTask() {
         if (!linkMapFile.isPresent) {
             throw GradleException(
                 "kmprofiler: Link map file is not configured. " +
-                    "Specify 'xcodeLinkMapFile' in kmprofiler extension or configure 'iosScheme' to generate it automatically."
+                        "Specify 'xcodeLinkMapFile' in kmprofiler extension or configure 'iosScheme' to generate it automatically."
             )
         }
 
@@ -41,8 +41,12 @@ abstract class AttributeSymbolsTask : DefaultTask() {
         }
 
         val prefix = frameworkPrefix.orNull?.takeIf { it.isNotBlank() } ?: "Shared"
-        val result = LinkMapParser().parse(mapFile, prefix)
-        val attributions = LinkMapParser().attributeSymbols(result)
+        val parser = LinkMapParser()
+        val result = parser.parse(mapFile, prefix, collectSymbols = true)
+        if (!result.isValid || result.symbolCount == 0L) {
+            throw GradleException("kmprofiler: Link map file does not contain a valid '# Symbols:' section or has 0 live symbols: ${mapFile.absolutePath}")
+        }
+        val attributions = parser.attributeSymbols(result)
 
         val markdown = AttributionReportRenderer().render(attributions, result.totalMappedBytes)
 

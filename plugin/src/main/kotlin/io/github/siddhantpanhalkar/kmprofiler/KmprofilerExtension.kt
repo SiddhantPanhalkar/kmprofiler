@@ -9,70 +9,75 @@ import java.io.File
 import javax.inject.Inject
 
 abstract class KmprofilerExtension @Inject constructor(objects: ObjectFactory) {
-    /** Path to the generated ObjC header (Shared.h). Must be set by consumer. */
+    /** Generated Objective-C header to inspect. Required by the export audit. */
     abstract val headerFile: RegularFileProperty
 
-    /** Directories containing Swift source files. Defaults to `iosApp/` at project root. */
+    /** Swift directories or files scanned for direct call sites. Defaults to `iosApp/`. */
     abstract val swiftSourceDirs: ConfigurableFileCollection
 
-    /** The framework baseName used in `binaries.framework { baseName = "..." }`. Defaults to "Shared". */
+    /** Framework base name declared in `binaries.framework`. */
     abstract val frameworkBaseName: Property<String>
 
     /**
-     * Whether the framework is built as a static archive (`isStatic = true`).
-     * Null (default) = not explicitly configured; reported as unknown.
+     * Records whether the framework is static or dynamic in the audit report.
+     * This helps explain how linker dead-stripping may affect the result.
      */
     val isStatic: Property<Boolean> = objects.property(Boolean::class.java)
 
-    /** Number of distinct exported framework binaries in this project. Defaults to 1. */
+    /** Number of framework binaries to check for possible duplicated dependencies. */
     abstract val exportedFrameworkCount: Property<Int>
 
-    /** Name prefixes to group for ownership review. This does not establish module ownership. */
+    /** Name prefixes to group for ownership review. This does not ignore the declarations. */
     abstract val externalPrefixes: ListProperty<String>
 
-    // ── Xcode build settings ─────────────────────────────────────────────
+    // Xcode build settings
 
-    /** Path to the Xcode workspace (.xcworkspace). Optional if iosProject is set. */
+    /** Xcode workspace (.xcworkspace), when the app uses a workspace. */
     val iosWorkspace: Property<File> = objects.property(File::class.java)
 
-    /** Path to the Xcode project (.xcodeproj). Optional if iosWorkspace is set. */
+    /** Xcode project (.xcodeproj), when the app does not use a workspace. */
     val iosProject: Property<File> = objects.property(File::class.java)
 
-    /** The Xcode scheme to build. */
+    /** Xcode scheme used to generate a link map. */
     val iosScheme: Property<String> = objects.property(String::class.java)
 
-    /** Xcode build configuration. Defaults to "Release". */
+    /** Xcode build configuration. Defaults to `Release`. */
     val xcodeConfiguration: Property<String> = objects.property(String::class.java)
 
     /** Xcode SDK destination. Defaults to "generic/platform=iOS". */
     val sdkDestination: Property<String> = objects.property(String::class.java)
 
-    /** Target architecture (e.g. "arm64"). Optional — auto-detected if not set. */
+    /** Optional target architecture override. */
     val architecture: Property<String> = objects.property(String::class.java)
 
-    /** Custom derived data path. Optional — Xcode default used if not set. */
+    /** Optional folder for Xcode build output instead of the default DerivedData folder. */
     val derivedDataPath: Property<File> = objects.property(File::class.java)
 
-    /** Custom xcconfig file. Optional. */
+    /** Path to an optional xcconfig file to inject custom build settings into xcodebuild. */
     val xcconfig: Property<File> = objects.property(File::class.java)
 
-    /** Timeout for xcodebuild operations in minutes. Defaults to 30. */
+    /** Maximum wait time for xcodebuild, in minutes. Defaults to 30. */
     val xcodeTimeoutMinutes: Property<Int> = objects.property(Int::class.java)
 
-    // ── Link map settings ────────────────────────────────────────────────
+    // Link map settings
 
-    /** Path to an existing Xcode link map file. */
+    /** Existing link map to analyze without running xcodebuild. */
     val xcodeLinkMapFile: RegularFileProperty = objects.fileProperty()
 
-    /** Framework prefix for ObjC symbols in the link map. Defaults to frameworkBaseName or "Shared". */
+    /** Baseline link map file for comparison against another build. */
+    val baselineLinkMap: RegularFileProperty = objects.fileProperty()
+
+    /** Candidate link map file for comparison against the baseline. */
+    val candidateLinkMap: RegularFileProperty = objects.fileProperty()
+
+    /** Kotlin/Native prefix used by exported Objective-C symbols, such as `Shared`. */
     val frameworkPrefix: Property<String> = objects.property(String::class.java)
 
-    // ── Analysis settings ────────────────────────────────────────────────
+    // Analysis settings
 
     /**
-     * When false (default), the analyzeKmprofiler task fails if zero Swift source files
-     * are discovered in the configured directories. Set to true to allow analysis with
-     * no consumer sources (all declarations will be reported as candidates).
+     * Allows the export audit to run when no Swift files are found. In that case,
+     * all exported declarations are review candidates. Defaults to false.
      */
     val allowEmptyConsumerSources: Property<Boolean> = objects.property(Boolean::class.java)
 }

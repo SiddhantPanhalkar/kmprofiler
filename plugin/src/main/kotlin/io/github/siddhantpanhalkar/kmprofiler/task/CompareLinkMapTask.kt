@@ -41,9 +41,13 @@ abstract class CompareLinkMapTask : DefaultTask() {
         }
 
         val prefix = frameworkPrefix.orNull?.takeIf { it.isNotBlank() } ?: "Shared"
-        val comparison = LinkMapParser().compare(baselineFile, candidateFile, prefix)
-
+        val comparison = try {
+            LinkMapParser().compare(baselineFile, candidateFile, prefix)
+        } catch (e: IllegalArgumentException) {
+            throw GradleException(e.message ?: "Comparison failed", e)
+        }
         val markdown = ComparisonReportRenderer().render(comparison)
+
 
         val destination = reportOutput.get().asFile
         destination.parentFile?.mkdirs()
@@ -68,7 +72,7 @@ abstract class CompareLinkMapTask : DefaultTask() {
     }
 
     private fun formatBytesDelta(delta: Long): String {
-        val sign = if (delta > 0) "+" else if (delta < 0) "" else ""
+        val sign = if (delta > 0) "+" else if (delta < 0) "-" else ""
         return "$sign${formatBytes(kotlin.math.abs(delta))}"
     }
 }

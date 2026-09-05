@@ -1,10 +1,10 @@
 package io.github.siddhantpanhalkar.kmprofiler
 
+import io.github.siddhantpanhalkar.kmprofiler.task.AnalyzeKmprofilerBinaryTask
+import io.github.siddhantpanhalkar.kmprofiler.task.AnalyzeKmprofilerTask
 import io.github.siddhantpanhalkar.kmprofiler.task.AttributeSymbolsTask
 import io.github.siddhantpanhalkar.kmprofiler.task.CompareLinkMapTask
 import io.github.siddhantpanhalkar.kmprofiler.task.GenerateLinkMapTask
-import io.github.siddhantpanhalkar.kmprofiler.task.AnalyzeKmprofilerBinaryTask
-import io.github.siddhantpanhalkar.kmprofiler.task.AnalyzeKmprofilerTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
@@ -29,8 +29,7 @@ class KmprofilerPlugin : Plugin<Project> {
         val transitiveExportValue =
             project.findProperty("kotlin.native.transitiveExport")?.toString()?.toBoolean()
 
-        // ── V1: Header + Swift analysis ──────────────────────────────────
-
+        // Export surface audit.
         project.tasks.register("analyzeKmprofiler", AnalyzeKmprofilerTask::class.java) { task ->
             task.group = "kmprofiler"
             task.description =
@@ -48,8 +47,7 @@ class KmprofilerPlugin : Plugin<Project> {
             task.allowEmptyConsumerSources.set(extension.allowEmptyConsumerSources)
         }
 
-        // ── V2: Link map generation ──────────────────────────────────────
-
+        // Link map generation.
         val generateTask = project.tasks.register(
             "generateKmprofilerLinkMap",
             GenerateLinkMapTask::class.java
@@ -72,8 +70,7 @@ class KmprofilerPlugin : Plugin<Project> {
             )
         }
 
-        // ── V2: Binary analysis ──────────────────────────────────────────
-
+        // Mapped symbol profile.
         val profileBinaryTask = project.tasks.register(
             "profileIosBinary",
             AnalyzeKmprofilerBinaryTask::class.java
@@ -89,8 +86,7 @@ class KmprofilerPlugin : Plugin<Project> {
             )
         }
 
-        // ── V2: Symbol attribution ───────────────────────────────────────
-
+        // Object-file attribution.
         val attributeSymbolsTask = project.tasks.register(
             "attributeKmprofilerSymbols",
             AttributeSymbolsTask::class.java
@@ -106,8 +102,7 @@ class KmprofilerPlugin : Plugin<Project> {
             )
         }
 
-        // ── V2: Baseline/candidate comparison ────────────────────────────
-
+        // Baseline and candidate comparison.
         project.tasks.register(
             "compareKmprofilerLinkMaps",
             CompareLinkMapTask::class.java
@@ -117,10 +112,10 @@ class KmprofilerPlugin : Plugin<Project> {
                 "Compares two link maps and reports binary size deltas."
 
             task.baselineLinkMap.convention(
-                project.layout.buildDirectory.file("reports/kmprofiler-linkmap-baseline.txt")
+                extension.baselineLinkMap.orElse(project.layout.buildDirectory.file("reports/kmprofiler-linkmap-baseline.txt"))
             )
             task.candidateLinkMap.convention(
-                project.layout.buildDirectory.file("reports/kmprofiler-linkmap-candidate.txt")
+                extension.candidateLinkMap.orElse(project.layout.buildDirectory.file("reports/kmprofiler-linkmap-candidate.txt"))
             )
             task.frameworkPrefix.convention(extension.frameworkPrefix)
             task.reportOutput.convention(
@@ -128,8 +123,7 @@ class KmprofilerPlugin : Plugin<Project> {
             )
         }
 
-        // ── Auto-wiring ──────────────────────────────────────────────────
-
+        // Run the Xcode build first when a scheme is configured.
         project.afterEvaluate {
             if (extension.iosScheme.isPresent) {
                 profileBinaryTask.configure { task ->

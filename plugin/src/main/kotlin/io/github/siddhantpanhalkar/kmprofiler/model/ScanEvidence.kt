@@ -25,7 +25,7 @@ enum class MatchKind {
     /** One of the declaration's member selectors found as a standalone reference. */
     MEMBER_REFERENCE,
 
-    /** Declaration name found in a comment or string literal — weak evidence. */
+    /** Declaration name found in a comment or string literal, which is weak evidence. */
     WEAK_TEXTUAL,
 
     /** No reference found in any scanned file. */

@@ -1,6 +1,6 @@
 package io.github.siddhantpanhalkar.sample
 
-// Exported but not used from Swift — shows up as a review candidate.
+// Exported but not referenced from Swift, so it appears as a review candidate.
 class InternalSyncEngine {
     fun sync() {}
     fun reset() {}

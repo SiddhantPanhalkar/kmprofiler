@@ -183,7 +183,10 @@ class LinkMapParserTest {
         assertThat(result.totalMappedBytes).isEqualTo(416L)
         assertThat(result.classifiedBytes).isEqualTo(384L)
         assertThat(result.unclassifiedBytes).isEqualTo(32L)
-        assertThat(result.coveragePercentage).isCloseTo(92.3, org.assertj.core.data.Offset.offset(0.1))
+        assertThat(result.coveragePercentage).isCloseTo(
+            92.3,
+            org.assertj.core.data.Offset.offset(0.1)
+        )
     }
 
     @Test
@@ -235,5 +238,59 @@ class LinkMapParserTest {
 
         val result = parser.parse(notALinkMap, "Shared")
         assertThat(result.categories).isEmpty()
+        assertThat(result.isValid).isFalse()
+        assertThat(result.symbolCount).isEqualTo(0L)
+    }
+
+    @Test
+    fun `collectSymbols = false does not populate symbols list`() {
+        val linkMapContent = """
+            # Path: /App
+            # Arch: arm64
+            # Object files:
+            [  1] /Shared.framework/Shared
+            # Symbols:
+            # Address Size File Name
+            0x100004000 0x00000020 [  1] _kfun:Foo
+        """.trimIndent()
+        val mapFile = tempDir.resolve("test-no-collect.txt")
+        mapFile.writeText(linkMapContent)
+
+        val result = parser.parse(mapFile, frameworkPrefix = "Shared", collectSymbols = false)
+        assertThat(result.symbols).isEmpty()
+        assertThat(result.symbolCount).isEqualTo(1L)
+        assertThat(result.isValid).isTrue()
+    }
+
+    @Test
+    fun `invalid file without Symbols header has isValid = false and fails when compare called`() {
+        val mapFile = tempDir.resolve("invalid.txt")
+        mapFile.writeText("# Path: /App")
+
+        val result = parser.parse(mapFile, frameworkPrefix = "Shared")
+        assertThat(result.isValid).isFalse()
+
+        org.junit.jupiter.api.assertThrows<IllegalArgumentException> {
+            parser.compare(mapFile, mapFile, "Shared")
+        }
+    }
+
+    @Test
+    fun `dead stripped symbols are ignored`() {
+        val linkMapContent = """
+            # Symbols:
+            # Address	Size    	File  Name
+            0x100004000	0x00000100	[  1]	_kfun:com.example.Foo#live(){}
+            # Dead Stripped Symbols:
+            # Address	Size    	File  Name
+            <<dead>> 	0x00000200	[  1]	_kfun:com.example.Foo#dead(){}
+        """.trimIndent()
+
+        val mapFile = tempDir.resolve("dead-stripped.txt")
+        mapFile.writeText(linkMapContent)
+
+        val result = parser.parse(mapFile, frameworkPrefix = "Shared")
+        assertThat(result.categories["com.example"]).isEqualTo(256L)
+        assertThat(result.symbolCount).isEqualTo(1L)
     }
 }

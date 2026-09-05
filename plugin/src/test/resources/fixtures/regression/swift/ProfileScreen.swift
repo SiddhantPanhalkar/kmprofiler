@@ -1,5 +1,5 @@
-import SwiftUI
 import Shared
+import SwiftUI
 
 struct ProfileScreen: View {
     @StateObject private var viewModel = ProfileViewModel()

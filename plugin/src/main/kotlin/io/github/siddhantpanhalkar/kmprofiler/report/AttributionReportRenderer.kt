@@ -3,13 +3,10 @@ package io.github.siddhantpanhalkar.kmprofiler.report
 import io.github.siddhantpanhalkar.kmprofiler.parser.LinkMapParser
 import java.util.Locale
 
-/**
- * Renders a Markdown attribution report mapping symbols to object files and modules.
- */
+/** Renders mapped symbol totals by object-file or inferred library name. */
 class AttributionReportRenderer {
 
     fun render(attributions: List<LinkMapParser.SymbolAttribution>, totalBytes: Long): String {
-        // Group by module
         val byModule = attributions.groupBy { it.moduleName }
             .mapValues { (_, symbols) -> symbols.sumOf { it.sizeBytes } }
             .entries
@@ -38,7 +35,7 @@ class AttributionReportRenderer {
             val topSymbols = attributions.take(50)
             for (attr in topSymbols) {
                 val shortPath = shortenPath(attr.objectFilePath)
-                val category = attr.category?.let { "`$it`" } ?: "—"
+                val category = attr.category?.let { "`$it`" } ?: "-"
                 val displaySymbol = if (attr.symbolName.length > 80) {
                     attr.symbolName.take(77) + "..."
                 } else {

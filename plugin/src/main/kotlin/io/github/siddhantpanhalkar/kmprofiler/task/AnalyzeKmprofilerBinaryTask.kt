@@ -40,7 +40,10 @@ abstract class AnalyzeKmprofilerBinaryTask : DefaultTask() {
         }
 
         val prefix = frameworkPrefix.orNull?.takeIf { it.isNotBlank() } ?: "Shared"
-        val result = LinkMapParser().parse(mapFile, prefix)
+        val result = LinkMapParser().parse(mapFile, prefix, collectSymbols = false)
+        if (!result.isValid || result.symbolCount == 0L) {
+            throw GradleException("kmprofiler: Link map file does not contain a valid '# Symbols:' section or has 0 live symbols: ${mapFile.absolutePath}")
+        }
 
         val markdown = buildString {
             appendLine("### kmprofiler: iOS Binary Size Breakdown")
@@ -50,10 +53,34 @@ abstract class AnalyzeKmprofilerBinaryTask : DefaultTask() {
             appendLine("| Metric | Value |")
             appendLine("|:---|---:|")
             appendLine("| Total Symbols | ${String.format(Locale.US, "%,d", result.symbolCount)} |")
-            appendLine("| Classified Kotlin Symbols | ${String.format(Locale.US, "%,d", result.classifiedSymbolCount)} |")
-            appendLine("| Total App Binary Size | ${formatBytes(result.totalMappedBytes)} |")
-            appendLine("| Total Kotlin & KMP Size | ${formatBytes(result.classifiedBytes)} (${String.format(Locale.US, "%.1f%%", result.coveragePercentage)}) |")
-            appendLine("| Native iOS / Swift / Pods Size | ${formatBytes(result.unclassifiedBytes)} (${String.format(Locale.US, "%.1f%%", 100.0 - result.coveragePercentage)}) |")
+            appendLine(
+                "| Classified Symbols | ${
+                    String.format(
+                        Locale.US,
+                        "%,d",
+                        result.classifiedSymbolCount
+                    )
+                } |"
+            )
+            appendLine("| Total Mapped Symbol Size | ${formatBytes(result.totalMappedBytes)} |")
+            appendLine(
+                "| Total Classified Mapped Size | ${formatBytes(result.classifiedBytes)} (${
+                    String.format(
+                        Locale.US,
+                        "%.1f%%",
+                        result.coveragePercentage
+                    )
+                }) |"
+            )
+            appendLine(
+                "| Unclassified Mapped Symbols | ${formatBytes(result.unclassifiedBytes)} (${
+                    String.format(
+                        Locale.US,
+                        "%.1f%%",
+                        100.0 - result.coveragePercentage
+                    )
+                }) |"
+            )
             appendLine()
             appendLine("#### Package / Category Breakdown")
             appendLine()
@@ -61,7 +88,11 @@ abstract class AnalyzeKmprofilerBinaryTask : DefaultTask() {
             appendLine("|:---|---:|---:|")
             for ((category, sizeBytes) in result.categories) {
                 val pct = if (result.totalMappedBytes > 0) {
-                    String.format(Locale.US, "%.1f%%", sizeBytes.toDouble() / result.totalMappedBytes * 100)
+                    String.format(
+                        Locale.US,
+                        "%.1f%%",
+                        sizeBytes.toDouble() / result.totalMappedBytes * 100
+                    )
                 } else "0.0%"
                 appendLine("| `$category` | ${formatBytes(sizeBytes)} | $pct |")
             }
@@ -80,7 +111,15 @@ abstract class AnalyzeKmprofilerBinaryTask : DefaultTask() {
                 logger.lifecycle("  ${index + 1}. $category: ${formatBytes(bytes)}")
             }
         }
-        logger.lifecycle("  Coverage: ${String.format(Locale.US, "%.1f%%", result.coveragePercentage)}")
+        logger.lifecycle(
+            "  Classified coverage: ${
+                String.format(
+                    Locale.US,
+                    "%.1f%%",
+                    result.coveragePercentage
+                )
+            }"
+        )
         logger.lifecycle("  Full binary report written to: ${destination.absolutePath}")
     }
 

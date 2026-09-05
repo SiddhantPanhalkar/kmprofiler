@@ -32,7 +32,7 @@ gradlePlugin {
         create("kmprofilerPlugin") {
             id = "io.github.siddhantpanhalkar.kmprofiler"
             displayName = "kmprofiler"
-            description = "Zero-fabrication Kotlin Multiplatform iOS export profiler"
+            description = "Kotlin Multiplatform iOS export and link map profiler"
             tags.set(listOf("kotlin", "kmp", "ios", "objective-c", "profiler", "xcframework"))
             implementationClass = "io.github.siddhantpanhalkar.kmprofiler.KmprofilerPlugin"
         }

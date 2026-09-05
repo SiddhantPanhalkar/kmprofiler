@@ -2,19 +2,29 @@
 
 ## 0.2.0
 
-The v2 engine brings true iOS binary profiling by automatically extracting and parsing Xcode Link Maps!
+Adds iOS binary footprint profiling and comparison based on Xcode link map analysis.
 
-### Highlights & Features:
-* **True Linked Byte Attribution:** The new `./gradlew profileIosBinary` task accurately calculates how many megabytes your KMP libraries (Compose, Ktor, RevenueCat) inject into your final stripped iOS executable.
-* **Automated Link Map Extraction:** No need to pollute your Xcode project settings! The plugin automatically spins up an isolated `xcodebuild` background process with `LD_GENERATE_MAP_FILE=YES` to fetch the link map.
-* **Objective-C Export Cost Tracking:** Calculates exactly how many KB your ObjC wrapper classes are costing you.
-* **Zero-Memory Parser:** Uses a highly efficient stream-based parsing engine that chews through 50MB+ Xcode link maps in milliseconds without bloating Gradle daemon memory.
+### Features
+
+* **Linked Symbol Profiling (`profileIosBinary`):** Estimates mapped live symbol bytes grouped by
+  Kotlin package (e.g., `androidx.compose`, `io.ktor`).
+* **Automated Link Map Extraction (`generateKmprofilerLinkMap`):** Runs a release build for the
+  configured iOS destination with `LD_GENERATE_MAP_FILE=YES` and copies the generated map.
+* **Objective-C Export Symbol Grouping:** Estimates the linked symbol footprint of exported
+  Objective-C class, metaclass, and ivar symbols. It does not measure every bridge symbol.
+* **Object-File Attribution (`attributeKmprofilerSymbols`):** Maps compiled symbols to object files
+  and infers library or framework names from their paths, then reports the 50 largest symbols.
+* **Baseline Comparison (`compareKmprofilerLinkMaps`):** Compares baseline and candidate link maps
+  to report byte and percentage deltas across categories.
+* **Streaming Link Map Parser:** Single-pass line-by-line parser that aggregates category bytes
+  without retaining complete symbol lists during profiling and comparison.
 
 ## 0.1.1
 
 V1 export audit release.
 
-- Clarified that the report is based on generated Objective-C header facts and direct textual Swift matches.
+- Clarified that the report is based on generated Objective-C header facts and direct textual Swift
+  matches.
 - Separated observations and heuristic review candidates from proof of unused code.
 - Improved candidate reporting and review guidance.
 - Documented the limits of external-module classification and size conclusions.

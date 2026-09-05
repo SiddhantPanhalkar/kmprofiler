@@ -11,89 +11,106 @@
 @class KotlinThrowable;
 
 @protocol SharedCameraController <NSObject>
-- (void)takePictureWithCompletionHandler:(void (^)(UIImage * _Nullable, NSError * _Nullable))completionHandler;
+- (void)takePictureWithCompletionHandler:(void (^)(UIImage *_Nullable, NSError *_Nullable))completionHandler;
+
 - (void)confirmCapture;
+
 - (void)discardCapture;
-@property (nonatomic, readonly) SharedZoomState * zoomState;
-@property (nonatomic, readonly) SharedExposureState * exposureState;
+
+@property(nonatomic, readonly) SharedZoomState *zoomState;
+@property(nonatomic, readonly) SharedExposureState *exposureState;
 @end
 
 @protocol SharedSubscriptionRepository <NSObject>
-- (void)getCurrentSubscriptionWithCompletionHandler:(void (^)(SharedSubscriptionResult * _Nonnull, NSError * _Nullable))completionHandler;
+- (void)getCurrentSubscriptionWithCompletionHandler:(void (^)(SharedSubscriptionResult *_Nonnull, NSError *_Nullable))completionHandler;
 @end
 
 @interface SharedHomeViewModel : NSObject
-- (instancetype)initWithCameraController:(id<SharedCameraController>)cameraController subscriptionRepository:(id<SharedSubscriptionRepository>)subscriptionRepository;
-@property (nonatomic, readonly) SharedHomeUiState * uiState;
+- (instancetype)initWithCameraController:(id <SharedCameraController>)cameraController subscriptionRepository:(id <SharedSubscriptionRepository>)subscriptionRepository;
+
+@property(nonatomic, readonly) SharedHomeUiState *uiState;
+
 - (void)startCamera;
+
 - (void)stopCamera;
+
 - (void)applyFilterWithName:(NSString *)name;
 @end
 
 @interface SharedHomeUiState : NSObject
-@property (nonatomic, readonly) NSString * _Nonnull stateDescription;
+@property(nonatomic, readonly) NSString *_Nonnull
+stateDescription;
 @end
 
 @interface SharedCameraState : SharedHomeUiState
-@property (nonatomic, readonly) int32_t activeCamera;
-@property (nonatomic, readonly) BOOL flashEnabled;
+@property(nonatomic, readonly) int32_t activeCamera;
+@property(nonatomic, readonly) BOOL flashEnabled;
 @end
 
 @interface SharedReviewState : SharedHomeUiState
-@property (nonatomic, readonly) NSData * _Nonnull imageData;
+@property(nonatomic, readonly) NSData *_Nonnull
+imageData;
+
 - (void)saveToGallery;
+
 - (void)discard;
 @end
 
 @interface SharedZoomState : NSObject
-@property (nonatomic, readonly) float current;
-@property (nonatomic, readonly) float min;
-@property (nonatomic, readonly) float max;
+@property(nonatomic, readonly) float current;
+@property(nonatomic, readonly) float min;
+@property(nonatomic, readonly) float max;
 @end
 
 @interface SharedExposureState : NSObject
-@property (nonatomic, readonly) float current;
-@property (nonatomic, readonly) float min;
-@property (nonatomic, readonly) float max;
+@property(nonatomic, readonly) float current;
+@property(nonatomic, readonly) float min;
+@property(nonatomic, readonly) float max;
 @end
 
 @interface SharedZoomController : NSObject
 - (void)setZoomWithRatio:(float)ratio;
+
 - (SharedZoomLens * _Nonnull)currentLens;
 @end
 
 @interface SharedZoomLens : NSObject
-@property (nonatomic, readonly) NSString * _Nonnull name;
-@property (nonatomic, readonly) float focalLength;
+@property(nonatomic, readonly) NSString *_Nonnull
+name;
+@property(nonatomic, readonly) float focalLength;
 @end
 
 @interface SharedZoomResolution : NSObject
-@property (nonatomic, readonly) int32_t width;
-@property (nonatomic, readonly) int32_t height;
+@property(nonatomic, readonly) int32_t width;
+@property(nonatomic, readonly) int32_t height;
 @end
 
 @interface SharedSubscriptionResult : NSObject
 @end
 
 @interface SharedSubscribed : SharedSubscriptionResult
-@property (nonatomic, readonly) NSString * _Nonnull expirationDate;
+@property(nonatomic, readonly) NSString *_Nonnull
+expirationDate;
 @end
 
 @interface SharedNotSubscribed : SharedSubscriptionResult
 @end
 
 @interface SharedError : SharedSubscriptionResult
-@property (nonatomic, readonly) NSString * _Nonnull errorMessage;
+@property(nonatomic, readonly) NSString *_Nonnull
+errorMessage;
 @end
 
 @interface SharedFilterRecipe : NSObject
-@property (nonatomic, readonly) NSString * _Nonnull name;
-@property (nonatomic, readonly) NSArray<SharedCurvePoint *> * _Nonnull curves;
+@property(nonatomic, readonly) NSString *_Nonnull
+name;
+@property(nonatomic, readonly) NSArray<SharedCurvePoint *> *_Nonnull
+curves;
 @end
 
 @interface SharedCurvePoint : NSObject
-@property (nonatomic, readonly) float input;
-@property (nonatomic, readonly) float output;
+@property(nonatomic, readonly) float input;
+@property(nonatomic, readonly) float output;
 @end
 
 @interface SharedCustomerInfoToUiMapper : NSObject
@@ -101,45 +118,61 @@
 @end
 
 @interface SharedCustomerInfoUiModel : NSObject
-@property (nonatomic, readonly) NSString * _Nonnull displayName;
-@property (nonatomic, readonly) NSString * _Nonnull subscriptionStatus;
+@property(nonatomic, readonly) NSString *_Nonnull
+displayName;
+@property(nonatomic, readonly) NSString *_Nonnull
+subscriptionStatus;
 @end
 
 @protocol SharedAnalytics <NSObject>
 - (void)logScreenViewWithName:(NSString *)name;
-- (void)logEventWithName:(NSString *)name parameters:(NSDictionary<NSString *, id> * _Nullable)parameters;
+
+- (void)logEventWithName:(NSString *)name parameters:(NSDictionary
+
+<NSString *, id> * _Nullable)
+parameters;
 @end
 
 @interface SharedTrialManager : NSObject
 - (BOOL)isTrialActive;
+
 - (int32_t)daysRemainingInTrial;
 @end
 
 @interface SharedAppDataStore : NSObject
-@property (nonatomic, readonly) BOOL hasCompletedOnboarding;
+@property(nonatomic, readonly) BOOL hasCompletedOnboarding;
+
 - (void)setHasCompletedOnboarding:(BOOL)value;
 @end
 
 @interface SharedColorKt : NSObject
 + (SharedFilterRecipe * _Nonnull)brightAndPunchy;
+
 + (SharedFilterRecipe * _Nonnull)warmGoldenFilm;
+
 + (SharedFilterRecipe * _Nonnull)blackAndWhite;
 @end
 
 @interface SharedDimensKt : NSObject
 + (float)spacingSmall;
+
 + (float)spacingMedium;
+
 + (float)spacingLarge;
 @end
 
 @interface SharedDateUtilsKt : NSObject
 + (NSString * _Nonnull)formatDate;
+
 + (NSString * _Nonnull)formatDateShort;
 @end
 
 @interface SharedCameraRegistry : NSObject
 + (SharedCameraRegistry * _Nonnull)shared;
-@property (nonatomic, strong) id<SharedCameraController> _Nullable cameraController;
+
+@property(nonatomic, strong) id <SharedCameraController> _Nullable
+cameraController;
+
 - (void)attachWithCameraActions:(SharedCameraActions *)actions;
 @end
 
@@ -149,77 +182,116 @@
 
 @interface SharedCameraCaptureBridge : NSObject
 + (SharedCameraCaptureBridge * _Nonnull)shared;
-@property (nonatomic, copy) void (^ _Nullable takePicture)(void);
-@property (nonatomic, copy) void (^ _Nullable confirmCapture)(void);
-@property (nonatomic, copy) void (^ _Nullable discardCapture)(void);
+
+@property(nonatomic, copy) void (^_Nullable
+takePicture)(void);
+@property(nonatomic, copy) void (^_Nullable
+confirmCapture)(void);
+@property(nonatomic, copy) void (^_Nullable
+discardCapture)(void);
 @end
 
 @interface SharedFilterApplyBridge : NSObject
 + (SharedFilterApplyBridge * _Nonnull)shared;
-@property (nonatomic, copy) void (^ _Nullable applyLutToFile)(NSString * _Nonnull, NSString * _Nonnull);
+
+@property(nonatomic, copy) void (^_Nullable
+applyLutToFile)(
+NSString *_Nonnull, NSString
+* _Nonnull);
 @end
 
 @interface SharedLiveFilterBridge : NSObject
 + (SharedLiveFilterBridge * _Nonnull)shared;
-@property (nonatomic, copy) void (^ _Nullable setLiveLut)(NSString * _Nonnull);
-@property (nonatomic, copy) void (^ _Nullable clearLiveLut)(void);
+
+@property(nonatomic, copy) void (^_Nullable
+setLiveLut)(
+NSString *_Nonnull
+);
+@property(nonatomic, copy) void (^_Nullable
+clearLiveLut)(void);
 @end
 
 @interface SharedHardwareShutterHandler : NSObject
 + (SharedHardwareShutterHandler * _Nonnull)shared;
-@property (nonatomic, copy) void (^ _Nullable onShutterClick)(void);
+
+@property(nonatomic, copy) void (^_Nullable
+onShutterClick)(void);
 @end
 
 @interface SharedZoomBridge : NSObject
 + (SharedZoomBridge * _Nonnull)shared;
-@property (nonatomic, copy) void (^ _Nullable onZoomStateChanged)(float);
-@property (nonatomic, copy) void (^ _Nullable setZoomRatio)(float);
+
+@property(nonatomic, copy) void (^_Nullable
+onZoomStateChanged)(float);
+@property(nonatomic, copy) void (^_Nullable
+setZoomRatio)(float);
 @end
 
 @interface SharedExposureBridge : NSObject
 + (SharedExposureBridge * _Nonnull)shared;
-@property (nonatomic, copy) void (^ _Nullable onExposureStateChanged)(float);
-@property (nonatomic, copy) void (^ _Nullable setExposureBias)(float);
+
+@property(nonatomic, copy) void (^_Nullable
+onExposureStateChanged)(float);
+@property(nonatomic, copy) void (^_Nullable
+setExposureBias)(float);
 @end
 
 @interface SharedFlashBridge : NSObject
 + (SharedFlashBridge * _Nonnull)shared;
-@property (nonatomic, copy) void (^ _Nullable triggerFlash)(void);
+
+@property(nonatomic, copy) void (^_Nullable
+triggerFlash)(void);
 @end
 
 @interface SharedPinterestShareBridge : NSObject
 + (SharedPinterestShareBridge * _Nonnull)shared;
-@property (nonatomic, copy) void (^ _Nullable onUrlReceived)(NSString * _Nonnull);
-@property (nonatomic, copy) void (^ _Nullable onImageBytesReceived)(NSData * _Nonnull);
+
+@property(nonatomic, copy) void (^_Nullable
+onUrlReceived)(
+NSString *_Nonnull
+);
+@property(nonatomic, copy) void (^_Nullable
+onImageBytesReceived)(
+NSData *_Nonnull
+);
 @end
 
 @interface SharedClipboardImportHandler : NSObject
 + (void)handleClipboardTextWithText:(NSString *)text;
+
 + (void)handleClipboardImageWithData:(NSData *)data;
 @end
 
 @interface SharedNavigationRoutes : NSObject
 + (NSString * _Nonnull)onboarding;
+
 + (NSString * _Nonnull)splash;
+
 + (NSString * _Nonnull)home;
+
 + (NSString * _Nonnull)profile;
 @end
 
 @interface SharedTestTags : NSObject
 + (NSString * _Nonnull)shutter;
+
 + (NSString * _Nonnull)gallery;
+
 + (NSString * _Nonnull)galleryPreview;
 @end
 
 @interface SharedRemoteConfigKeys : NSObject
 + (NSString * _Nonnull)minVersion;
+
 + (NSString * _Nonnull)supportEmail;
+
 + (NSString * _Nonnull)pinterestUrl;
 @end
 
 @interface SharedBuildKonfig : NSObject
-@property (nonatomic, readonly) BOOL DEBUG;
-@property (nonatomic, readonly) NSString * _Nonnull REVENUECAT_API_KEY;
+@property(nonatomic, readonly) BOOL DEBUG;
+@property(nonatomic, readonly) NSString *_Nonnull
+REVENUECAT_API_KEY;
 @end
 
 @interface Ktor_client_coreHttpClient : NSObject
@@ -231,7 +303,8 @@
 @end
 
 @interface Koin_coreModule : NSObject
-@property (nonatomic, readonly) NSArray * _Nonnull contents;
+@property(nonatomic, readonly) NSArray *_Nonnull
+contents;
 @end
 
 @interface Koin_coreScope : NSObject
@@ -246,12 +319,15 @@
 @end
 
 @interface SharedSupportEmailData : NSObject
-@property (nonatomic, readonly) NSString * _Nonnull email;
-@property (nonatomic, readonly) NSString * _Nonnull subject;
+@property(nonatomic, readonly) NSString *_Nonnull
+email;
+@property(nonatomic, readonly) NSString *_Nonnull
+subject;
 @end
 
 @interface SharedInternalSyncEngine : NSObject
 - (void)performSync;
+
 - (void)cancelSync;
 @end
 

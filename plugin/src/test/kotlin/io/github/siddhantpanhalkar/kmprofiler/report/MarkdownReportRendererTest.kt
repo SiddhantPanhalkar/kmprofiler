@@ -141,10 +141,18 @@ class MarkdownReportRendererTest {
                 scanResult("CameraState", memberCount = 16),
             ),
             kotlinFileFacadeCandidates = listOf(
-                scanResult("ColorKt", category = DeclarationCategory.KOTLIN_FILE_FACADE, memberCount = 36),
+                scanResult(
+                    "ColorKt",
+                    category = DeclarationCategory.KOTLIN_FILE_FACADE,
+                    memberCount = 36
+                ),
             ),
             likelyExternalCandidates = listOf(
-                scanResult("Koin_coreModule", category = DeclarationCategory.LIKELY_EXTERNAL, memberCount = 20),
+                scanResult(
+                    "Koin_coreModule",
+                    category = DeclarationCategory.LIKELY_EXTERNAL,
+                    memberCount = 20
+                ),
             ),
             configLint = ConfigLintResult(
                 transitiveExport = false,
@@ -157,15 +165,15 @@ class MarkdownReportRendererTest {
 
         assertThat(rendered).contains("**No direct Swift call site found for 3 of them.**")
 
-        assertThat(rendered).contains("#### Your code — review candidates (1)")
+        assertThat(rendered).contains("#### Your code - review candidates (1)")
         assertThat(rendered).contains("| `CameraState` | class | 16 |")
 
-        assertThat(rendered).contains("#### Kotlin file facades — review candidates (1)")
+        assertThat(rendered).contains("#### Kotlin file facades - review candidates (1)")
         assertThat(rendered).doesNotContain("@file:HiddenFromObjC")
         assertThat(rendered).contains("declaration-level `@HiddenFromObjC`")
         assertThat(rendered).contains("| `ColorKt` | 36 |")
 
-        assertThat(rendered).contains("#### Unresolved ownership — 1 declarations")
+        assertThat(rendered).contains("#### Unresolved ownership - 1 declarations")
         assertThat(rendered).contains("naming heuristics, not metadata")
         assertThat(rendered).contains("| `Koin_coreModule` | 20 |")
     }

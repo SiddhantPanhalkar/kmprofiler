@@ -6,13 +6,13 @@ package io.github.siddhantpanhalkar.kmprofiler.model
  * All classifications are heuristic. Name-based inference cannot prove ownership;
  * only KLIB/module metadata can establish that.
  *
- *   - [APP_CODE] — default bucket; does not match any other pattern.
- *   - [KOTLIN_FILE_FACADE] — name ends with `Kt` (Kotlin/Native emits these for
- *     source files containing top-level functions). Ownership inference is reliable.
- *   - [LIKELY_EXTERNAL] — name matches the Kotlin/Native ObjC name mangling pattern
+ *   - [APP_CODE]: default bucket; does not match any other pattern.
+ *   - [KOTLIN_FILE_FACADE]: name ends with `Kt` (Kotlin/Native emits these for
+ *     source files containing top-level functions). Ownership still comes from a name heuristic.
+ *   - [LIKELY_EXTERNAL]: name matches the Kotlin/Native ObjC name mangling pattern
  *     (`ModuleName_submoduleTypeName`). Indicates cross-module origin but does not
  *     prove the declaration belongs to a third-party dependency.
- *   - [USER_FLAGGED_EXTERNAL] — user explicitly listed this prefix via
+ *   - [USER_FLAGGED_EXTERNAL]: user explicitly listed this prefix via
  *     [io.github.siddhantpanhalkar.kmprofiler.KmprofilerExtension.externalPrefixes].
  *     Affect grouping only; does not change safety recommendations.
  */
@@ -30,7 +30,7 @@ enum class DeclarationCategory {
      *
      * If iOS never uses these functions, the developer should review eligible
      * individual declarations for declaration-level `@HiddenFromObjC` or
-     * visibility changes — not apply file-level annotations.
+     * visibility changes. Do not apply file-level annotations.
      */
     KOTLIN_FILE_FACADE,
 

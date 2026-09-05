@@ -16,21 +16,21 @@ class DeclarationClassifierTest {
     private fun classify(name: String) = classifier.classify(decl(name))
 
     @Test
-    fun `app code — plain name no underscore`() {
+    fun `app code - plain name no underscore`() {
         assertThat(classify("UserRepository")).isEqualTo(DeclarationCategory.APP_CODE)
         assertThat(classify("CameraState")).isEqualTo(DeclarationCategory.APP_CODE)
         assertThat(classify("HomeUiStateReady")).isEqualTo(DeclarationCategory.APP_CODE)
     }
 
     @Test
-    fun `kotlin file facade — name ends with Kt`() {
+    fun `kotlin file facade - name ends with Kt`() {
         assertThat(classify("ColorKt")).isEqualTo(DeclarationCategory.KOTLIN_FILE_FACADE)
         assertThat(classify("DimensKt")).isEqualTo(DeclarationCategory.KOTLIN_FILE_FACADE)
         assertThat(classify("AppModuleKt")).isEqualTo(DeclarationCategory.KOTLIN_FILE_FACADE)
     }
 
     @Test
-    fun `likely external — underscore module pattern`() {
+    fun `likely external - underscore module pattern`() {
         assertThat(classify("Ktor_client_coreHttpClient")).isEqualTo(DeclarationCategory.LIKELY_EXTERNAL)
         assertThat(classify("Koin_coreModule")).isEqualTo(DeclarationCategory.LIKELY_EXTERNAL)
         assertThat(classify("Kotlinx_coroutines_coreFlow")).isEqualTo(DeclarationCategory.LIKELY_EXTERNAL)
@@ -39,14 +39,14 @@ class DeclarationClassifierTest {
     }
 
     @Test
-    fun `app code — underscore in middle of word is not the module pattern`() {
+    fun `app code - underscore in middle of word is not the module pattern`() {
         // User might name their own class with underscores (unusual but possible)
         // The pattern requires Capital_lowercase specifically
         assertThat(classify("My_Config")).isEqualTo(DeclarationCategory.APP_CODE) // Capital_Capital = app
     }
 
     @Test
-    fun `user flagged external — matched user prefix`() {
+    fun `user flagged external - matched user prefix`() {
         val classifierWithPrefixes = DeclarationClassifier(setOf("Skiko", "Material3"))
         assertThat(classifierWithPrefixes.classify(decl("SkikoCanvas"))).isEqualTo(
             DeclarationCategory.USER_FLAGGED_EXTERNAL

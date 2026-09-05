@@ -100,8 +100,8 @@ class RegressionFixtureTest {
         assertThat(text).contains("**Ownership analysis:**")
 
         // Verify sections exist (with actual counts from the fixture)
-        assertThat(text).contains("#### Your code — review candidates")
-        assertThat(text).contains("#### Kotlin file facades — review candidates")
+        assertThat(text).contains("#### Your code - review candidates")
+        assertThat(text).contains("#### Kotlin file facades - review candidates")
         assertThat(text).contains("#### Unresolved ownership")
 
         // Verify config lint

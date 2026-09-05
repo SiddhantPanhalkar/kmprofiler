@@ -17,7 +17,7 @@ import java.io.File
  *   - Comments and string literals produce weak evidence only.
  *   - Protocol conformance and extension references are recognized.
  *
- * Limitations — the following usage patterns produce false negatives:
+ * Limitations: the following usage patterns produce false negatives:
  *   - Dependency injection containers referencing types by string name
  *   - Protocol conformance and dynamic dispatch
  *   - KVO / selector-string lookup
@@ -103,18 +103,15 @@ class SwiftUsageScanner {
         val evidence = mutableListOf<ScanEvidence>()
 
         for (file in files) {
-            // Check for type name as standalone token in executable code
             val typeEvidence = findTypeReference(decl.name, file)
             evidence.addAll(typeEvidence)
 
-            // Check for member selectors as standalone tokens
             for (selector in decl.selectors) {
                 val memberEvidence = findMemberReference(selector, file)
                 evidence.addAll(memberEvidence)
             }
         }
 
-        // Determine strongest match kind and confidence
         val typeMatches = evidence.filter { it.matchKind == MatchKind.TYPE_REFERENCE }
         val memberMatches = evidence.filter { it.matchKind == MatchKind.MEMBER_REFERENCE }
         val weakMatches = evidence.filter { it.matchKind == MatchKind.WEAK_TEXTUAL }
@@ -126,18 +123,21 @@ class SwiftUsageScanner {
                 confidence = Confidence.HIGH,
                 evidence = typeMatches,
             )
+
             memberMatches.isNotEmpty() -> DeclarationScanResult(
                 declaration = decl,
                 status = MatchKind.MEMBER_REFERENCE,
                 confidence = Confidence.MEDIUM,
                 evidence = memberMatches,
             )
+
             weakMatches.isNotEmpty() -> DeclarationScanResult(
                 declaration = decl,
                 status = MatchKind.WEAK_TEXTUAL,
                 confidence = Confidence.LOW,
                 evidence = weakMatches,
             )
+
             else -> DeclarationScanResult(
                 declaration = decl,
                 status = MatchKind.NO_REFERENCE,
@@ -199,16 +199,14 @@ class SwiftUsageScanner {
 
     /**
      * Strip line comments (`//`) and string literals (`"..."`) from a line.
-     * This is a heuristic — nested strings and escaped quotes are not fully handled.
+     * This is a heuristic: nested strings and escaped quotes are not fully handled.
      */
     private fun stripCommentsAndStrings(line: String): String {
         var result = line
-        // Remove line comments
         val commentIndex = result.indexOf("//")
         if (commentIndex >= 0) {
             result = result.substring(0, commentIndex)
         }
-        // Remove string literals (simple heuristic: remove content between double quotes)
         result = STRING_LITERAL_REGEX.replace(result, "\"\"")
         return result
     }

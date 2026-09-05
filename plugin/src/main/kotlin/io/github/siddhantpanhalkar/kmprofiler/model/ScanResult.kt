@@ -7,7 +7,7 @@ data class ScanResult(
     val totalExported: Int,
     /**
      * Declarations classified as APP_CODE with no direct Swift call site detected.
-     * These are review candidates — not proof of dead code or removable adapters.
+     * These are review candidates, not proof of dead code or removable adapters.
      */
     val reviewCandidates: List<DeclarationScanResult>,
     /**

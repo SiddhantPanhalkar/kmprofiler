@@ -28,7 +28,7 @@ class SymbolAttributionTest {
             """.trimIndent()
         )
 
-        val result = parser.parse(linkMap, "Shared")
+        val result = parser.parse(linkMap, "Shared", collectSymbols = true)
         val attributions = parser.attributeSymbols(result)
 
         assertThat(attributions).hasSize(3)
@@ -61,7 +61,7 @@ class SymbolAttributionTest {
             """.trimIndent()
         )
 
-        val result = parser.parse(linkMap, "Shared")
+        val result = parser.parse(linkMap, "Shared", collectSymbols = true)
         val attributions = parser.attributeSymbols(result)
 
         assertThat(attributions[0].sizeBytes).isGreaterThanOrEqualTo(attributions[1].sizeBytes)
@@ -80,7 +80,7 @@ class SymbolAttributionTest {
             """.trimIndent()
         )
 
-        val result = parser.parse(linkMap, "Shared")
+        val result = parser.parse(linkMap, "Shared", collectSymbols = true)
         val attributions = parser.attributeSymbols(result)
 
         assertThat(attributions[0].moduleName).isEqualTo("Koin_coreModule")
@@ -98,7 +98,7 @@ class SymbolAttributionTest {
             """.trimIndent()
         )
 
-        val result = parser.parse(linkMap, "Shared")
+        val result = parser.parse(linkMap, "Shared", collectSymbols = true)
         val attributions = parser.attributeSymbols(result)
 
         assertThat(attributions[0].objectFilePath).isEqualTo("unknown")

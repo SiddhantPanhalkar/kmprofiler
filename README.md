@@ -42,7 +42,7 @@ Profiling the iOS footprint of a Kotlin Multiplatform project involves two diffe
 | `analyzeKmprofiler`          | Audits the generated Objective-C header against Swift sources and reports declarations for review.                    |
 | `generateKmprofilerLinkMap`  | Builds the iOS app with `LD_GENERATE_MAP_FILE=YES` and copies the link map to `build/reports/kmprofiler-linkmap.txt`. |
 | `profileIosBinary`           | Measures total mapped symbol size and groups symbols by Kotlin package and export surface.                            |
-| `attributeKmprofilerSymbols` | Attributes mapped symbols to object files and inferred libraries or frameworks, then lists the 50 largest symbols.     |
+| `attributeKmprofilerSymbols` | Attributes mapped symbols to object files and inferred libraries or frameworks, then lists the 50 largest symbols.    |
 | `compareKmprofilerLinkMaps`  | Compares two link maps and reports size deltas across packages and categories between builds.                         |
 
 ---
@@ -321,28 +321,28 @@ The plugin clearly separates direct measurements from heuristics:
 
 ## Configuration reference
 
-| Property                    | Type                         | Default                | Why it exists                                                                                    |
-|-----------------------------|------------------------------|------------------------|--------------------------------------------------------------------------------------------------|
-| `headerFile`                | `RegularFileProperty`        | Required               | Points to the generated Objective-C header (`Shared.h`) for export surface auditing.             |
-| `swiftSourceDirs`           | `ConfigurableFileCollection` | `iosApp/`              | Defines which Swift directories to scan for declaration call sites.                              |
-| `iosWorkspace`              | `Property<File>`             | `null`                 | Points to your `.xcworkspace` if your iOS project uses workspaces or CocoaPods.                  |
-| `iosProject`                | `Property<File>`             | `null`                 | Points to your `.xcodeproj` if your iOS project does not use a workspace.                        |
-| `iosScheme`                 | `Property<String>`           | `null`                 | Specifies the Xcode scheme to build for automated link map generation.                           |
-| `xcodeConfiguration`        | `Property<String>`           | `Release`              | Selects the Xcode build configuration so profiling reflects optimized release binaries.          |
-| `sdkDestination`            | `Property<String>`           | `generic/platform=iOS` | Sets the target platform destination passed to `xcodebuild`.                                     |
-| `architecture`              | `Property<String>`           | Auto-detected          | Overrides architecture resolution when building multi-architecture binaries.                     |
-| `derivedDataPath`           | `Property<File>`             | `null`                 | Isolates Xcode build outputs to a dedicated folder instead of default DerivedData.               |
-| `xcconfig`                  | `Property<File>`             | `null`                 | Passes custom build settings into `xcodebuild` during link map generation.                       |
-| `xcodeTimeoutMinutes`       | `Property<Int>`              | `30`                   | Prevents hanging builds by setting an execution time limit on `xcodebuild`.                      |
-| `xcodeLinkMapFile`          | `RegularFileProperty`        | `null`                 | Allows analyzing an existing link map without triggering a new Xcode build.                      |
-| `baselineLinkMap`           | `RegularFileProperty`        | `null`                 | Sets the reference link map file when comparing size changes.                                    |
-| `candidateLinkMap`          | `RegularFileProperty`        | `null`                 | Sets the new link map file when comparing size changes.                                          |
-| `frameworkBaseName`         | `Property<String>`           | `"Shared"`             | Matches the framework name configured in Kotlin/Native `binaries.framework`.                     |
-| `frameworkPrefix`           | `Property<String>`           | `"Shared"`             | Matches the symbol prefix used by Kotlin/Native for exported Objective-C types.                  |
-| `isStatic`                  | `Property<Boolean>`          | Not set                | Records linkage in the audit report to help determine if linker dead-stripping applies.          |
-| `exportedFrameworkCount`    | `Property<Int>`              | `1`                    | Flags potential duplication if multiple independent frameworks share dependencies.               |
+| Property                    | Type                         | Default                | Why it exists                                                                                     |
+|-----------------------------|------------------------------|------------------------|---------------------------------------------------------------------------------------------------|
+| `headerFile`                | `RegularFileProperty`        | Required               | Points to the generated Objective-C header (`Shared.h`) for export surface auditing.              |
+| `swiftSourceDirs`           | `ConfigurableFileCollection` | `iosApp/`              | Defines which Swift directories to scan for declaration call sites.                               |
+| `iosWorkspace`              | `Property<File>`             | `null`                 | Points to your `.xcworkspace` if your iOS project uses workspaces or CocoaPods.                   |
+| `iosProject`                | `Property<File>`             | `null`                 | Points to your `.xcodeproj` if your iOS project does not use a workspace.                         |
+| `iosScheme`                 | `Property<String>`           | `null`                 | Specifies the Xcode scheme to build for automated link map generation.                            |
+| `xcodeConfiguration`        | `Property<String>`           | `Release`              | Selects the Xcode build configuration so profiling reflects optimized release binaries.           |
+| `sdkDestination`            | `Property<String>`           | `generic/platform=iOS` | Sets the target platform destination passed to `xcodebuild`.                                      |
+| `architecture`              | `Property<String>`           | Auto-detected          | Overrides architecture resolution when building multi-architecture binaries.                      |
+| `derivedDataPath`           | `Property<File>`             | `null`                 | Isolates Xcode build outputs to a dedicated folder instead of default DerivedData.                |
+| `xcconfig`                  | `Property<File>`             | `null`                 | Passes custom build settings into `xcodebuild` during link map generation.                        |
+| `xcodeTimeoutMinutes`       | `Property<Int>`              | `30`                   | Prevents hanging builds by setting an execution time limit on `xcodebuild`.                       |
+| `xcodeLinkMapFile`          | `RegularFileProperty`        | `null`                 | Allows analyzing an existing link map without triggering a new Xcode build.                       |
+| `baselineLinkMap`           | `RegularFileProperty`        | `null`                 | Sets the reference link map file when comparing size changes.                                     |
+| `candidateLinkMap`          | `RegularFileProperty`        | `null`                 | Sets the new link map file when comparing size changes.                                           |
+| `frameworkBaseName`         | `Property<String>`           | `"Shared"`             | Matches the framework name configured in Kotlin/Native `binaries.framework`.                      |
+| `frameworkPrefix`           | `Property<String>`           | `"Shared"`             | Matches the symbol prefix used by Kotlin/Native for exported Objective-C types.                   |
+| `isStatic`                  | `Property<Boolean>`          | Not set                | Records linkage in the audit report to help determine if linker dead-stripping applies.           |
+| `exportedFrameworkCount`    | `Property<Int>`              | `1`                    | Flags potential duplication if multiple independent frameworks share dependencies.                |
 | `externalPrefixes`          | `ListProperty<String>`       | Empty                  | Groups matching names for ownership review. It does not ignore those declarations or remove them. |
-| `allowEmptyConsumerSources` | `Property<Boolean>`          | `false`                | Prevents the audit from failing when no Swift files exist, treating all exports as unreferenced. |
+| `allowEmptyConsumerSources` | `Property<Boolean>`          | `false`                | Prevents the audit from failing when no Swift files exist, treating all exports as unreferenced.  |
 
 ---
 

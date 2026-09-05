@@ -20,7 +20,7 @@ import io.github.siddhantpanhalkar.kmprofiler.model.ExportedDeclaration
  * names for call-site matching.
  *
  * Declarations that are not user Kotlin surface are deliberately skipped:
- *   - Bulk forward declaration lines (`@protocol A, B, C;`) — they carry no
+ *   - Bulk forward declaration lines (`@protocol A, B, C;`): they carry no
  *     members; the real definitions appear later in the header.
  *   - Kotlin/Native runtime infrastructure (Swift names starting with `Kotlin`:
  *     KotlinBase, KotlinNumber, boxed primitives, KotlinMutableSet/Dictionary).
@@ -76,7 +76,7 @@ class ObjCHeaderParser {
             when {
                 // ── Open a new declaration block ──────────────────────────────
                 line.startsWith("@interface ") || line.startsWith("@protocol ") -> {
-                    // Skip forward declarations — they end with ';' and may list
+                    // Skip forward declarations. They end with ';' and may list
                     // multiple comma-separated names (bulk @protocol lists).
                     if (line.trimEnd().endsWith(";")) {
                         pendingSwiftName = null

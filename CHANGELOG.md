@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.0
+
+Adds iOS binary footprint profiling and comparison based on Xcode link map analysis.
+
+### Features
+
+* **Linked Symbol Profiling (`profileIosBinary`):** Estimates mapped live symbol bytes grouped by
+  Kotlin package (e.g., `androidx.compose`, `io.ktor`).
+* **Automated Link Map Extraction (`generateKmprofilerLinkMap`):** Runs a release build for the
+  configured iOS destination with `LD_GENERATE_MAP_FILE=YES` and copies the generated map.
+* **Objective-C Export Symbol Grouping:** Estimates the linked symbol footprint of exported
+  Objective-C class, metaclass, and ivar symbols. It does not measure every bridge symbol.
+* **Object-File Attribution (`attributeKmprofilerSymbols`):** Maps compiled symbols to object files
+  and infers library or framework names from their paths, then reports the 50 largest symbols.
+* **Baseline Comparison (`compareKmprofilerLinkMaps`):** Compares baseline and candidate link maps
+  to report byte and percentage deltas across categories.
+* **Streaming Link Map Parser:** Single-pass line-by-line parser that aggregates category bytes
+  without retaining complete symbol lists during profiling and comparison.
+
 ## 0.1.1
 
 V1 export audit release.

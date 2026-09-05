@@ -13,7 +13,6 @@ class AnalyzeKmprofilerTaskFunctionalTest {
     @TempDir
     lateinit var testProjectDir: File
 
-    private lateinit var buildFile: File
     private lateinit var headerFile: File
     private lateinit var swiftDir: File
 
@@ -49,25 +48,28 @@ class AnalyzeKmprofilerTaskFunctionalTest {
             """.trimIndent()
             )
         }
+    }
 
-        buildFile = File(testProjectDir, "build.gradle.kts").apply {
-            writeText(
-                """
-                plugins {
-                    id("io.github.siddhantpanhalkar.kmprofiler")
-                }
+    private fun writeBuildFile(swiftSourcePath: String, extraConfig: String = "") {
+        File(testProjectDir, "build.gradle.kts").writeText(
+            """
+            plugins {
+                id("io.github.siddhantpanhalkar.kmprofiler")
+            }
 
-                kmprofiler {
-                    headerFile.set(file("${headerFile.absolutePath.replace("\\", "/")}"))
-                    swiftSourceDirs.setFrom(file("${swiftDir.absolutePath.replace("\\", "/")}"))
-                }
-            """.trimIndent()
-            )
-        }
+            kmprofiler {
+                headerFile.set(file("${headerFile.absolutePath.replace("\\", "/")}"))
+                swiftSourceDirs.setFrom(file("$swiftSourcePath"))
+                $extraConfig
+            }
+        """.trimIndent()
+        )
     }
 
     @Test
     fun `analyzeKmprofiler task succeeds and writes report`() {
+        writeBuildFile(swiftDir.absolutePath.replace("\\", "/"))
+
         val result = GradleRunner.create()
             .withProjectDir(testProjectDir)
             .withPluginClasspath()
@@ -82,10 +84,15 @@ class AnalyzeKmprofilerTaskFunctionalTest {
         val text = report.readText()
         assertThat(text).contains("Bar")
         assertThat(text).doesNotContain("Foo")
+        assertThat(text).doesNotContain("@file:HiddenFromObjC")
+        assertThat(text).contains("Decision tree for each candidate")
+        assertThat(text).contains("#### Provenance")
     }
 
     @Test
     fun `analyzeKmprofiler task is incremental and up to date on second run`() {
+        writeBuildFile(swiftDir.absolutePath.replace("\\", "/"))
+
         GradleRunner.create()
             .withProjectDir(testProjectDir)
             .withPluginClasspath()
@@ -102,39 +109,42 @@ class AnalyzeKmprofilerTaskFunctionalTest {
     }
 
     @Test
-    fun `analyzeKmprofiler fails when configured swift sources are empty by default`() {
-        swiftDir.listFiles()?.forEach { it.delete() }
+    fun `analyzeKmprofiler fails when no Swift files are discovered`() {
+        val emptySwiftDir = File(testProjectDir, "emptyApp").apply { mkdirs() }
+        writeBuildFile(emptySwiftDir.absolutePath.replace("\\", "/"))
 
         val result = GradleRunner.create()
             .withProjectDir(testProjectDir)
             .withPluginClasspath()
-            .withArguments("analyzeKmprofiler")
+            .withArguments("analyzeKmprofiler", "--stacktrace")
             .buildAndFail()
 
-        assertThat(result.output).contains("No Swift source files were found")
-        assertThat(result.output).contains("allowEmptyConsumerSources = true")
+        assertThat(result.task(":analyzeKmprofiler")?.outcome).isEqualTo(TaskOutcome.FAILED)
+        assertThat(result.output).contains("No Swift source files found")
+        assertThat(result.output).contains("allowEmptyConsumerSources")
     }
 
     @Test
-    fun `analyzeKmprofiler allows an explicit header-only audit`() {
-        swiftDir.listFiles()?.forEach { it.delete() }
-        buildFile.appendText(
-            """
-
-            kmprofiler {
-                allowEmptyConsumerSources.set(true)
-            }
-            """.trimIndent(),
+    fun `analyzeKmprofiler succeeds with allowEmptyConsumerSources when no Swift files`() {
+        val emptySwiftDir = File(testProjectDir, "emptyApp").apply { mkdirs() }
+        writeBuildFile(
+            emptySwiftDir.absolutePath.replace("\\", "/"),
+            "allowEmptyConsumerSources.set(true)"
         )
 
         val result = GradleRunner.create()
             .withProjectDir(testProjectDir)
             .withPluginClasspath()
-            .withArguments("analyzeKmprofiler")
+            .withArguments("analyzeKmprofiler", "--stacktrace")
             .build()
 
         assertThat(result.task(":analyzeKmprofiler")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-        assertThat(File(testProjectDir, "build/reports/kmprofiler-report.md").readText())
-            .contains("Swift files scanned: 0")
+
+        val report = File(testProjectDir, "build/reports/kmprofiler-report.md")
+        assertThat(report).exists()
+        val text = report.readText()
+        // All declarations should be candidates when no Swift files scanned
+        assertThat(text).contains("Foo")
+        assertThat(text).contains("Bar")
     }
 }
